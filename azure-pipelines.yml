@@ -1,0 +1,54 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    projects: '**/*.csproj'
+    arguments: '--output $(Build.ArtifactStagingDirectory)\WebJob\App_Data\jobs\continuous\MyWebJob'
+    zipAfterPublish: false
+    modifyOutputPath: false
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: '"dotnet DiceMastersDiscordBot.dll" | Out-File run.cmd -Encoding ASCII; $LASTEXITCODE'
+
+- task: AzureRmWebAppDeployment@4
+  inputs:
+    ConnectionType: 'AzureRM'
+    azureSubscription: 'Visual Studio Enterprise(d4103f93-49be-4437-b603-8a3b94f45042)'
+    appType: 'webApp'
+    WebAppName: 'DiceMastersDiscordBot'
+    packageForLinux: '$(Build.ArtifactStagingDirectory)\WebJob'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
