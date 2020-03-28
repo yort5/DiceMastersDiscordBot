@@ -34,12 +34,6 @@ steps:
     zipAfterPublish: false
     modifyOutputPath: false
 
-- task: PowerShell@2
-  inputs:
-    targetType: 'inline'
-    script: '"dotnet DiceMastersDiscordBot.dll" | Out-File run.cmd -Encoding ASCII; $LASTEXITCODE'
-    workingDirectory: '$(Build.ArtifactStagingDirectory)\WebJob\App_Data\jobs\continuous\DiceMastersDiscordBot'
-
 - task: AzureRmWebAppDeployment@4
   inputs:
     ConnectionType: 'AzureRM'
