@@ -46,8 +46,6 @@ steps:
     appType: 'webApp'
     WebAppName: 'DiceMastersDiscordBot'
     packageForLinux: '$(Build.ArtifactStagingDirectory)\WebJob'
-    ScriptType: 'Inline Script'
-    InlineScript: 'run.cmd'
 
 - task: PublishBuildArtifacts@1
   inputs:
