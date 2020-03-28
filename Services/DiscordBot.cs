@@ -91,26 +91,31 @@ namespace DiceMastersDiscordBot.Services
              var sheetsService = AuthorizeGoogleSheets(message.Channel.Name);
             if(message.Channel.Name == "weekly-dice-arena")
             {
-                // check for existing Sheet
-                return SendLinkToGoogle(sheetsService, message);
-            }
-            return "No logic found for that team link";
-        }
-
-        private string SendLinkToGoogle(SheetsService sheetsService, SocketMessage message)
-        {
-            try
-            {
-                // Define request parameters.
-                String SpreadsheetId = "1EsdtQgUy7u5HnDxvzYHEibHml7yqidcWbsYANGlPoAA";
-                var userName = message.Author.Username;
+                String wdasheetid = Config["WeeklyDiceArenaSheetId"];
                 DateTime today = DateTime.Now;
                 int diff = (7 + (DateTime.Now.DayOfWeek - DayOfWeek.Friday)) % 7;
                 int week = (today.AddDays(diff).Date.DayOfYear / 7);
                 string weekSheet = $"{today.Year}-Week{week}";
                 string sheet = $"{weekSheet}";
-                var range = $"{sheet}!A:B";
+                return SendLinkToGoogle(sheetsService, message, wdasheetid, sheet);
+            }
+            else if(message.Channel.Name == "team-of-the-month")
+            {
+                String wdasheetid = Config["TeamOfTheMonthSheetId"];
+                DateTime today = DateTime.Now;
+                string sheet = $"{today.Year}-{today.ToString("MMMM")}";
+                return SendLinkToGoogle(sheetsService, message, wdasheetid, sheet);
+            }
+            return "No logic found for that team link";
+        }
 
+        private string SendLinkToGoogle(SheetsService sheetsService, SocketMessage message, string SpreadsheetId, string sheet)
+        {
+            try
+            {
+                // Define request parameters.
+                var userName = message.Author.Username;
+                var range = $"{sheet}!A:B";
 
                 // first check to see if this person already has a submission
                 var checkExistingRequest = sheetsService.Spreadsheets.Values.Get(SpreadsheetId, range);
