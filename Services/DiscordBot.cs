@@ -80,10 +80,61 @@ namespace DiceMastersDiscordBot.Services
             {
                 await message.Channel.SendMessageAsync(SubmitTeamLink(message));
             }
+            else if (message.Content.StartsWith("!format"))
+            {
+                await message.Channel.SendMessageAsync(GetCurrentFormat(message));
+            }
             else if(message.Content.StartsWith("!"))
             {
                 await message.Channel.SendMessageAsync("No matching command found");
             }
+        }
+
+        private string GetCurrentFormat(SocketMessage message)
+        {
+            var sheetsService = AuthorizeGoogleSheets(message.Channel.Name);
+            if (message.Channel.Name == "weekly-dice-arena")
+            {
+                String wdasheetid = Config["WeeklyDiceArenaSheetId"];
+                DateTime today = DateTime.Now;
+                int diff = (7 + (DateTime.Now.DayOfWeek - DayOfWeek.Friday)) % 7;
+                int week = (today.AddDays(diff).Date.DayOfYear / 7);
+                string weekSheet = $"{today.Year}-Week{week}";
+                string sheet = $"{weekSheet}";
+                return GetFormatFromGoogle(sheetsService, message, wdasheetid, sheet);
+            }
+            else if (message.Channel.Name == "team-of-the-month")
+            {
+                String totmSheetId = Config["TeamOfTheMonthSheetId"];
+                DateTime today = DateTime.Now;
+                string sheet = $"{today.Year}-{today.ToString("MMMM")}";
+                return GetFormatFromGoogle(sheetsService, message, totmSheetId, sheet);
+            }
+            return "No logic found for that team link";
+        }
+
+        private string GetFormatFromGoogle(SheetsService sheetsService, SocketMessage message, string SpreadsheetId, string sheet)
+        {
+            try
+            {
+                // Define request parameters.
+                var userName = message.Author.Username;
+                var range = $"{sheet}!A:B";
+
+                // load the data
+                var sheetRequest = sheetsService.Spreadsheets.Values.Get(SpreadsheetId, range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+                if (values != null && values.Count > 0)
+                {
+                    return values[0][1].ToString();
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+            }
+            return "There was an error trying to add your team";
         }
 
         private string SubmitTeamLink(SocketMessage message)
