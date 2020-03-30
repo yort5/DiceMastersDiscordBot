@@ -23,10 +23,18 @@ namespace DiceMastersDiscordBot.Services
         private DiscordSocketClient _client;
         private CommandService _commands;
 
+        private readonly string WDASheetId;
+        private readonly string DiceFightSheetId;
+        private readonly string TotMSheetId;
+
         public DiscordBot(ILoggerFactory loggerFactory, IConfiguration config)
         {
             Logger = loggerFactory.CreateLogger<DiscordBot>();
             Config = config;
+
+            WDASheetId = config["WeeklyDiceArenaSheetId"];
+            DiceFightSheetId = config["DiceFightSheetId"];
+            TotMSheetId = config["TeamOfTheMonthSheetId"];
         }
 
         public ILogger Logger { get; }
@@ -95,8 +103,11 @@ namespace DiceMastersDiscordBot.Services
             var sheetsService = AuthorizeGoogleSheets(message.Channel.Name);
             if (message.Channel.Name == "weekly-dice-arena")
             {
-                String wdasheetid = Config["WeeklyDiceArenaSheetId"];
-                return GetFormatFromGoogle(sheetsService, message, wdasheetid, WdaSheetName);
+                return GetFormatFromGoogle(sheetsService, message, WDASheetId, WdaSheetName);
+            }
+            else if (message.Channel.Name == "dice-fight")
+            {
+                return GetFormatFromGoogle(sheetsService, message, DiceFightSheetId, DiceFightSheetName);
             }
             else if (message.Channel.Name == "team-of-the-month")
             {
@@ -238,8 +249,19 @@ namespace DiceMastersDiscordBot.Services
             {
                 DateTime today = DateTime.Now;
                 int diff = (7 + (today.DayOfWeek - DayOfWeek.Tuesday)) % 7;
-                DateTime nextWdaDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
-                return $"{today.Year}-{today.ToString("MMMM")}-{nextWdaDate.Day}";
+                DateTime nextDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
+                return $"{today.Year}-{nextDate.ToString("MMMM")}-{nextDate.Day}";
+            }
+        }
+
+        private string DiceFightSheetName
+        {
+            get
+            {
+                DateTime today = DateTime.Now;
+                int diff = (7 + (today.DayOfWeek - DayOfWeek.Thursday)) % 7;
+                DateTime nextDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
+                return $"{today.Year}-{nextDate.ToString("MMMM")}-{nextDate.Day}";
             }
         }
 
