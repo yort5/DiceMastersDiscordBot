@@ -96,19 +96,12 @@ namespace DiceMastersDiscordBot.Services
             if (message.Channel.Name == "weekly-dice-arena")
             {
                 String wdasheetid = Config["WeeklyDiceArenaSheetId"];
-                DateTime today = DateTime.Now;
-                int diff = (7 + (DateTime.Now.DayOfWeek - DayOfWeek.Friday)) % 7;
-                int week = (today.AddDays(diff).Date.DayOfYear / 7);
-                string weekSheet = $"{today.Year}-Week{week}";
-                string sheet = $"{weekSheet}";
-                return GetFormatFromGoogle(sheetsService, message, wdasheetid, sheet);
+                return GetFormatFromGoogle(sheetsService, message, wdasheetid, WdaSheetName);
             }
             else if (message.Channel.Name == "team-of-the-month")
             {
                 String totmSheetId = Config["TeamOfTheMonthSheetId"];
-                DateTime today = DateTime.Now;
-                string sheet = $"{today.Year}-{today.ToString("MMMM")}";
-                return GetFormatFromGoogle(sheetsService, message, totmSheetId, sheet);
+                return GetFormatFromGoogle(sheetsService, message, totmSheetId, TotMSheetName);
             }
             return "No logic found for that team link";
         }
@@ -134,7 +127,7 @@ namespace DiceMastersDiscordBot.Services
             {
                 Console.WriteLine(exc.Message);
             }
-            return "There was an error trying to add your team";
+            return "There was an error trying to retrieve the format information";
         }
 
         private string SubmitTeamLink(SocketMessage message)
@@ -143,19 +136,12 @@ namespace DiceMastersDiscordBot.Services
             if(message.Channel.Name == "weekly-dice-arena")
             {
                 String wdasheetid = Config["WeeklyDiceArenaSheetId"];
-                DateTime today = DateTime.Now;
-                int diff = (7 + (DateTime.Now.DayOfWeek - DayOfWeek.Friday)) % 7;
-                int week = (today.AddDays(diff).Date.DayOfYear / 7);
-                string weekSheet = $"{today.Year}-Week{week}";
-                string sheet = $"{weekSheet}";
-                return SendLinkToGoogle(sheetsService, message, wdasheetid, sheet);
+                return SendLinkToGoogle(sheetsService, message, wdasheetid, WdaSheetName);
             }
             else if(message.Channel.Name == "team-of-the-month")
             {
                 String wdasheetid = Config["TeamOfTheMonthSheetId"];
-                DateTime today = DateTime.Now;
-                string sheet = $"{today.Year}-{today.ToString("MMMM")}";
-                return SendLinkToGoogle(sheetsService, message, wdasheetid, sheet);
+                return SendLinkToGoogle(sheetsService, message, wdasheetid, TotMSheetName);
             }
             return "No logic found for that team link";
         }
@@ -243,6 +229,26 @@ namespace DiceMastersDiscordBot.Services
             {
                 Console.WriteLine(exc.Message);
                 return null;
+            }
+        }
+
+        private string WdaSheetName
+        {
+            get
+            {
+                DateTime today = DateTime.Now;
+                int diff = (7 + (today.DayOfWeek - DayOfWeek.Tuesday)) % 7;
+                DateTime nextWdaDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
+                return $"{today.Year}-{today.ToString("MMMM")}-{nextWdaDate.Day}";
+            }
+        }
+
+        private string TotMSheetName
+        {
+            get
+            {
+                DateTime today = DateTime.Now;
+                return $"{today.Year}-{today.ToString("MMMM")}";
             }
         }
 
