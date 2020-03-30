@@ -27,6 +27,11 @@ namespace DiceMastersDiscordBot.Services
         private readonly string DiceFightSheetId;
         private readonly string TotMSheetId;
 
+        private const string EVENT_WDA = "weekly-dice-arena";
+        private const string EVENT_DICE_FIGHT = "dice-fight";
+        private const string EVENT_TOTM = "team-of-the-month";
+
+
         public DiscordBot(ILoggerFactory loggerFactory, IConfiguration config)
         {
             Logger = loggerFactory.CreateLogger<DiscordBot>();
@@ -80,27 +85,70 @@ namespace DiceMastersDiscordBot.Services
 
         private async Task DiscordMessageReceived(SocketMessage message)
         {
+            var dmchannelID = await message.Author.GetOrCreateDMChannelAsync();
+            if (message.Channel.Id == dmchannelID.Id)
+            {
+                if (message.Content.ToLower().StartsWith("submit"))
+                {
+                    try
+                    {
+                        var eventName = "undetermined";
+                        var args = message.Content.Split(' ');
+
+                        switch (args[1].ToUpper())
+                        {
+                            case "WDA":
+                            case "WEEKLY-DICE-ARENA":
+                                eventName = EVENT_WDA;
+                                break;
+                            case "DF":
+                            case "DICE-FIGHT":
+                                eventName = EVENT_DICE_FIGHT;
+                                break;
+                            case "TOTM":
+                            case "TEAM-OF-THE-MONTH":
+                                eventName = EVENT_TOTM;
+                                break;
+                            default:
+                                break;
+                        }
+
+                        await message.Channel.SendMessageAsync(SubmitTeamLink(eventName, args[2], message));
+                    }
+                    catch (Exception exc)
+                    {
+                        Console.WriteLine($"Exception submitting team via DM: {exc.Message}");
+                        await message.Channel.SendMessageAsync("Sorry, I was unable to determine which event you wanted to submit to.");
+                        await message.Channel.SendMessageAsync(DMBotSubmitTeamHint);
+                        await message.Channel.SendMessageAsync("If you think you're doing it right and it still doesn't work, message Yort or post in #bot-uprising");
+                    }
+                }
+            }
             if (message.Content == "!ping")
             {
                 await message.Channel.SendMessageAsync("Pong!");
             }
             else if(message.Content.StartsWith("!teamlink"))
             {
-                await message.Channel.SendMessageAsync(SubmitTeamLink(message));
+                await message.Channel.SendMessageAsync(DMBotSubmitTeamHint);
             }
             else if (message.Content.StartsWith("!format"))
             {
                 await message.Channel.SendMessageAsync(GetCurrentFormat(message));
             }
-            else if(message.Content.StartsWith("!"))
+            else if (message.Content.StartsWith("!help"))
             {
-                await message.Channel.SendMessageAsync("No matching command found");
+                await message.Channel.SendMessageAsync($"Currnetly Dice Masters Bot can do two things:{Environment.NewLine}!format - returns the format of the current channel.{Environment.NewLine}You can direct message the bot to submit a team by using \"submit [wda/df/totm] [teambuilderlink]");
             }
+            //else if(message.Content.StartsWith("!"))
+            //{
+            //    await message.Channel.SendMessageAsync("No matching command found");
+            //}
         }
 
         private string GetCurrentFormat(SocketMessage message)
         {
-            var sheetsService = AuthorizeGoogleSheets(message.Channel.Name);
+            var sheetsService = AuthorizeGoogleSheets();
             if (message.Channel.Name == "weekly-dice-arena")
             {
                 return GetFormatFromGoogle(sheetsService, message, WDASheetId, WdaSheetName);
@@ -141,23 +189,25 @@ namespace DiceMastersDiscordBot.Services
             return "There was an error trying to retrieve the format information";
         }
 
-        private string SubmitTeamLink(SocketMessage message)
+        private string SubmitTeamLink(string eventName, string teamlink, SocketMessage message)
         {
-             var sheetsService = AuthorizeGoogleSheets(message.Channel.Name);
-            if(message.Channel.Name == "weekly-dice-arena")
+             var sheetsService = AuthorizeGoogleSheets();
+            if(eventName == "weekly-dice-arena")
             {
-                String wdasheetid = Config["WeeklyDiceArenaSheetId"];
-                return SendLinkToGoogle(sheetsService, message, wdasheetid, WdaSheetName);
+                return SendLinkToGoogle(sheetsService, message, WDASheetId, WdaSheetName, teamlink);
             }
-            else if(message.Channel.Name == "team-of-the-month")
+            else if (eventName == "dice-fight")
             {
-                String wdasheetid = Config["TeamOfTheMonthSheetId"];
-                return SendLinkToGoogle(sheetsService, message, wdasheetid, TotMSheetName);
+                return SendLinkToGoogle(sheetsService, message, DiceFightSheetId, DiceFightSheetName, teamlink);
             }
-            return "No logic found for that team link";
+            else if(eventName == "team-of-the-month")
+            {
+                return SendLinkToGoogle(sheetsService, message, TotMSheetId, TotMSheetName, teamlink);
+            }
+            return DMBotSubmitTeamHint;
         }
 
-        private string SendLinkToGoogle(SheetsService sheetsService, SocketMessage message, string SpreadsheetId, string sheet)
+        private string SendLinkToGoogle(SheetsService sheetsService, SocketMessage message, string SpreadsheetId, string sheet, string teamlink)
         {
             try
             {
@@ -180,8 +230,6 @@ namespace DiceMastersDiscordBot.Services
                     }
                 }
 
-                string trimString = "!teamlink";
-                var teamlink = message.Content.TrimStart(trimString.ToCharArray());
                 var oblist = new List<object>() { userName, teamlink };
                 var valueRange = new ValueRange();
                 valueRange.Values = new List<IList<object>> { oblist };
@@ -210,12 +258,12 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
-        private SheetsService AuthorizeGoogleSheets(string channel)
+        private SheetsService AuthorizeGoogleSheets()
         {
             try
             {
                 string[] Scopes = { SheetsService.Scope.Spreadsheets };
-                string ApplicationName = $"Dice Masters Online {channel}";
+                string ApplicationName = $"Dice Masters Online Helper Bot";
                 string googleCredentialJson = Config["GoogleCredentials"];
 
                 GoogleCredential credential;
@@ -271,6 +319,14 @@ namespace DiceMastersDiscordBot.Services
             {
                 DateTime today = DateTime.Now;
                 return $"{today.Year}-{today.ToString("MMMM")}";
+            }
+        }
+
+        public string DMBotSubmitTeamHint 
+        { 
+            get
+            {
+                return $"Please send a Direct Message to the Dice Masters Bot with the format \"submit [event] [teambuilder link]\" where [event] is{Environment.NewLine}Weekly Dice Arena: WDA{Environment.NewLine}Dice Fight: DF{Environment.NewLine}Team of the Month: TOTM";
             }
         }
 
