@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Discord;
@@ -22,6 +23,7 @@ namespace DiceMastersDiscordBot.Services
     {
         private DiscordSocketClient _client;
         private CommandService _commands;
+        private string _helpstring;
 
         private readonly string WDASheetId;
         private readonly string DiceFightSheetId;
@@ -30,6 +32,8 @@ namespace DiceMastersDiscordBot.Services
         private const string EVENT_WDA = "weekly-dice-arena";
         private const string EVENT_DICE_FIGHT = "dice-fight";
         private const string EVENT_TOTM = "team-of-the-month";
+
+        private const string SUBMIT_STRING = "!submit";
 
 
         public DiscordBot(ILoggerFactory loggerFactory, IConfiguration config)
@@ -88,7 +92,7 @@ namespace DiceMastersDiscordBot.Services
             var dmchannelID = await message.Author.GetOrCreateDMChannelAsync();
             if (message.Channel.Id == dmchannelID.Id)
             {
-                if (message.Content.ToLower().StartsWith("submit"))
+                if (message.Content.ToLower().StartsWith("submit") || message.Content.ToLower().StartsWith("!submit"))
                 {
                     try
                     {
@@ -128,9 +132,12 @@ namespace DiceMastersDiscordBot.Services
             {
                 await message.Channel.SendMessageAsync("Pong!");
             }
-            else if(message.Content.StartsWith("!teamlink"))
+            else if(message.Content.StartsWith(SUBMIT_STRING))
             {
-                await message.Channel.SendMessageAsync(DMBotSubmitTeamHint);
+                // first delete the original message
+                await message.Channel.DeleteMessageAsync(message);
+                var teamlink = message.Content.TrimStart(SUBMIT_STRING.ToCharArray()).Trim();
+                await message.Channel.SendMessageAsync(SubmitTeamLink(message.Channel.Name, teamlink, message));
             }
             else if (message.Content.StartsWith("!format"))
             {
@@ -138,7 +145,7 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.StartsWith("!help"))
             {
-                await message.Channel.SendMessageAsync($"Currnetly Dice Masters Bot can do two things:{Environment.NewLine}!format - returns the format of the current channel.{Environment.NewLine}You can direct message the bot to submit a team by using \"submit [wda/df/totm] [teambuilderlink]");
+                await message.Channel.SendMessageAsync(DMBotCommandHelpString);
             }
             //else if(message.Content.StartsWith("!"))
             //{
@@ -327,6 +334,27 @@ namespace DiceMastersDiscordBot.Services
             get
             {
                 return $"Please send a Direct Message to the Dice Masters Bot with the format \"submit [event] [teambuilder link]\" where [event] is{Environment.NewLine}Weekly Dice Arena: WDA{Environment.NewLine}Dice Fight: DF{Environment.NewLine}Team of the Month: TOTM";
+            }
+        }
+
+        public string DMBotCommandHelpString
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(_helpstring))
+                {
+                    StringBuilder helpString = new StringBuilder();
+                    var nl = Environment.NewLine;
+                    helpString.Append("The Dice Masters Bot currently supports the following commands:");
+                    helpString.Append($"{nl}WITHIN A CHANNEL:");
+                    helpString.Append($"{nl}    !format - returns the current format for that channel's event");
+                    helpString.Append($"{nl}    !submit <teambuilder link> - submits your team for the event. Your link will be immediately deleted so others can't see it.");
+                    helpString.Append($"{nl}VIA DIRECT MESSAGE - you can also send the Dice Masters Bot a direct message");
+                    helpString.Append($"{nl}    !submit/submit <event> <teambuilder link> - current supported events are wda (Weekly Dice Arena), df (Dice Fight) and totm (Team of the Month)");
+                    helpString.Append($"{nl}If you have any problems or just general feedback, please DM Yort.");
+                    _helpstring = helpString.ToString();
+                }
+                return _helpstring;
             }
         }
 
