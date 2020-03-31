@@ -255,7 +255,7 @@ namespace DiceMastersDiscordBot.Services
                     var appendRequest = sheetsService.Spreadsheets.Values.Append(valueRange, SpreadsheetId, range);
                     appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
                     var appendReponse = appendRequest.Execute();
-                    return "Team added!";
+                    return $"Thanks {userName}, your team was added!";
                 }
             } 
             catch (Exception exc)
