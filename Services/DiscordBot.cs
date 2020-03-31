@@ -302,9 +302,17 @@ namespace DiceMastersDiscordBot.Services
         {
             get
             {
-                DateTime today = DateTime.Now;
-                int diff = (7 + (today.DayOfWeek - DayOfWeek.Tuesday)) % 7;
-                DateTime nextDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
+                DateTime today = DateTime.Today;
+                DateTime nextDate;
+                if (today.DayOfWeek == DayOfWeek.Tuesday)
+                {
+                    nextDate = today;
+                }
+                else
+                {
+                    int diff = (7 + (today.DayOfWeek - DayOfWeek.Tuesday)) % 7;
+                    nextDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
+                }
                 return $"{today.Year}-{nextDate.ToString("MMMM")}-{nextDate.Day}";
             }
         }
@@ -313,9 +321,17 @@ namespace DiceMastersDiscordBot.Services
         {
             get
             {
-                DateTime today = DateTime.Now;
-                int diff = (7 + (today.DayOfWeek - DayOfWeek.Thursday)) % 7;
-                DateTime nextDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
+                DateTime today = DateTime.Today;
+                DateTime nextDate;
+                if (today.DayOfWeek == DayOfWeek.Thursday)
+                {
+                    nextDate = today;
+                }
+                else
+                {
+                    int diff = (7 + (today.DayOfWeek - DayOfWeek.Thursday)) % 7;
+                    nextDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
+                }
                 return $"{today.Year}-{nextDate.ToString("MMMM")}-{nextDate.Day}";
             }
         }
