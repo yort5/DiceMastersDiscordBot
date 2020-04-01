@@ -185,7 +185,6 @@ namespace DiceMastersDiscordBot.Services
             try
             {
                 // Define request parameters.
-                var userName = message.Author.Username;
                 var range = $"{sheetName}!A:B";
 
                 // load the data
@@ -196,6 +195,7 @@ namespace DiceMastersDiscordBot.Services
             }
             catch (Exception exc)
             {
+                Console.WriteLine(exc.Message);
                 return "Sorry, wasn't able to determine player count";
             }
             
