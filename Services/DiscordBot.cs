@@ -352,7 +352,8 @@ namespace DiceMastersDiscordBot.Services
         {
             get
             {
-                DateTime today = DateTime.Today;
+                TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+                DateTime today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, localTimeZone);
                 DateTime nextDate;
                 if (today.DayOfWeek == DayOfWeek.Tuesday)
                 {
@@ -371,7 +372,8 @@ namespace DiceMastersDiscordBot.Services
         {
             get
             {
-                DateTime today = DateTime.Today;
+                TimeZoneInfo localTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central Europe Standard Time");
+                DateTime today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, localTimeZone);
                 DateTime nextDate;
                 if (today.DayOfWeek == DayOfWeek.Thursday)
                 {
