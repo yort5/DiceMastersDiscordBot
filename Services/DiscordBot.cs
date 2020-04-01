@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using DiceMastersDiscordBot.Entities;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -135,7 +136,7 @@ namespace DiceMastersDiscordBot.Services
             else if(message.Content.StartsWith(SUBMIT_STRING))
             {
                 // first delete the original message
-                await message.Channel.DeleteMessageAsync(message);
+                //await message.Channel.DeleteMessageAsync(message);
                 var teamlink = message.Content.TrimStart(SUBMIT_STRING.ToCharArray()).Trim();
                 await message.Channel.SendMessageAsync(SubmitTeamLink(message.Channel.Name, teamlink, message));
             }
@@ -169,8 +170,9 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Channel.Name == "dice-fight")
             {
+                DiceFightHomeSheet df = GetDiceFightHomeSheet(sheetsService);
                 sheetId = DiceFightSheetId;
-                sheetName = DiceFightSheetName;
+                sheetName = df.SheetName;
             }
             else if (message.Channel.Name == "team-of-the-month")
             {
@@ -211,13 +213,48 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Channel.Name == "dice-fight")
             {
-                return GetFormatFromGoogle(sheetsService, message, DiceFightSheetId, DiceFightSheetName);
+                try
+                {
+                    DiceFightHomeSheet s = GetDiceFightHomeSheet(sheetsService);
+                    if(s ==  null) return "No information found for this week yet";
+
+                    var nl = Environment.NewLine;
+                    return $"Dice Fight for {s.EventDate}{nl}Format - {s.FormatDescription}{nl}Bans - {s.Bans}";
+                }
+                catch (Exception exc)
+                {
+                    Console.WriteLine($"Exception in Dice Fight: {exc.Message}");
+                    return $"Ooops! Something went wrong with Dice Fight - please contact Yort (bot) or jacquesblondes (Dice Fight)";
+                }
             }
             else if (message.Channel.Name == "team-of-the-month")
             {
                 return GetFormatFromGoogle(sheetsService, message, TotMSheetId, TotMSheetName);
             }
             return "I can't accept team links on this channel";
+        }
+
+        private DiceFightHomeSheet GetDiceFightHomeSheet(SheetsService sheetsService)
+        {
+            var range = $"HomeSheet!A:D";
+            var sheetRequest = sheetsService.Spreadsheets.Values.Get(DiceFightSheetId, range);
+            var sheetResponse = sheetRequest.Execute();
+            StringBuilder format = new StringBuilder();
+            foreach (var row in sheetResponse.Values)
+            {
+                if (row.Count >= 4 && row[0].ToString().ToLower() == DiceFightSheetName.ToLower())
+                {
+                    DiceFightHomeSheet sheetInfo = new DiceFightHomeSheet()
+                    {
+                        EventDate = row[0].ToString(),
+                        SheetName = row[1].ToString(),
+                        FormatDescription = row[2].ToString(),
+                        Bans = row[3].ToString()
+                    };
+                    return sheetInfo;
+                }
+            }
+            return null;
         }
 
         private string GetFormatFromGoogle(SheetsService sheetsService, SocketMessage message, string SpreadsheetId, string sheet)
@@ -253,13 +290,68 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (eventName == "dice-fight")
             {
-                return SendLinkToGoogle(sheetsService, message, DiceFightSheetId, DiceFightSheetName, teamlink);
+                return SendDiceFightLinkToGoogle(sheetsService, message);
             }
             else if(eventName == "team-of-the-month")
             {
                 return SendLinkToGoogle(sheetsService, message, TotMSheetId, TotMSheetName, teamlink);
             }
             return DMBotSubmitTeamHint;
+        }
+
+        private string SendDiceFightLinkToGoogle(SheetsService sheetsService, SocketMessage message)
+        {
+            try
+            {
+                DiceFightHomeSheet df = GetDiceFightHomeSheet(sheetsService);
+
+                // Define request parameters.
+                var userName = message.Author.Username;
+                var range = $"{df.SheetName}!A:D";
+                // strip off any <>s if people included them
+                string[] args = message.Content.Split(" ");
+
+                // first check to see if this person already has a submission
+                var checkExistingRequest = sheetsService.Spreadsheets.Values.Get(DiceFightSheetId, range);
+                var existingRecords = checkExistingRequest.Execute();
+                bool existingEntryFound = false;
+                foreach (var record in existingRecords.Values)
+                {
+                    if (record.Contains(userName))
+                    {
+                        var index = existingRecords.Values.IndexOf(record);
+                        range = $"{df.SheetName}!A{index + 1}";
+                        existingEntryFound = true;
+                        break;
+                    }
+                }
+
+                var oblist = new List<object>() { DateTime.Now, userName, args[2], args[1] };
+                var valueRange = new ValueRange();
+                valueRange.Values = new List<IList<object>> { oblist };
+
+                if (existingEntryFound)
+                {
+                    // Performing Update Operation...
+                    var updateRequest = sheetsService.Spreadsheets.Values.Update(valueRange, DiceFightSheetId, range);
+                    updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                    var appendReponse = updateRequest.Execute();
+                    return $"Thanks {userName}, your team was updated!";
+                }
+                else
+                {
+                    // Append the above record...
+                    var appendRequest = sheetsService.Spreadsheets.Values.Append(valueRange, DiceFightSheetId, range);
+                    appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
+                    var appendReponse = appendRequest.Execute();
+                    return $"Thanks {userName}, your team was added!";
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+                return "There was an error trying to add your team";
+            }
         }
 
         private string SendLinkToGoogle(SheetsService sheetsService, SocketMessage message, string SpreadsheetId, string sheet, string teamlink)
