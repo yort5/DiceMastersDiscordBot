@@ -143,6 +143,10 @@ namespace DiceMastersDiscordBot.Services
             {
                 await message.Channel.SendMessageAsync(GetCurrentFormat(message));
             }
+            else if (message.Content.StartsWith("!count"))
+            {
+                await message.Channel.SendMessageAsync(GetCurrentPlayerCount(message));
+            }
             else if (message.Content.StartsWith("!help"))
             {
                 await message.Channel.SendMessageAsync(DMBotCommandHelpString);
@@ -153,9 +157,54 @@ namespace DiceMastersDiscordBot.Services
             //}
         }
 
+        private string GetCurrentPlayerCount(SocketMessage message)
+        {
+            var sheetsService = AuthorizeGoogleSheets();
+            string sheetId;
+            string sheetName;
+            if (message.Channel.Name == "weekly-dice-arena")
+            {
+                sheetId = WDASheetId;
+                sheetName = WdaSheetName;
+            }
+            else if (message.Channel.Name == "dice-fight")
+            {
+                sheetId = DiceFightSheetId;
+                sheetName = DiceFightSheetName;
+            }
+            else if (message.Channel.Name == "team-of-the-month")
+            {
+                sheetId = TotMSheetId;
+                sheetName = TotMSheetName;
+            }
+            else
+            {
+                return "Sorry, can't do that on this channel";
+            }
+
+            try
+            {
+                // Define request parameters.
+                var userName = message.Author.Username;
+                var range = $"{sheetName}!A:B";
+
+                // load the data
+                var sheetRequest = sheetsService.Spreadsheets.Values.Get(sheetId, range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+                return $"There are currently {values.Count - 1} humans signed up for this week's event!";
+            }
+            catch (Exception exc)
+            {
+                return "Sorry, wasn't able to determine player count";
+            }
+            
+        }
+
         private string GetCurrentFormat(SocketMessage message)
         {
             var sheetsService = AuthorizeGoogleSheets();
+
             if (message.Channel.Name == "weekly-dice-arena")
             {
                 return GetFormatFromGoogle(sheetsService, message, WDASheetId, WdaSheetName);
@@ -166,10 +215,9 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Channel.Name == "team-of-the-month")
             {
-                String totmSheetId = Config["TeamOfTheMonthSheetId"];
-                return GetFormatFromGoogle(sheetsService, message, totmSheetId, TotMSheetName);
+                return GetFormatFromGoogle(sheetsService, message, TotMSheetId, TotMSheetName);
             }
-            return "No logic found for that team link";
+            return "I can't accept team links on this channel";
         }
 
         private string GetFormatFromGoogle(SheetsService sheetsService, SocketMessage message, string SpreadsheetId, string sheet)
@@ -221,6 +269,8 @@ namespace DiceMastersDiscordBot.Services
                 // Define request parameters.
                 var userName = message.Author.Username;
                 var range = $"{sheet}!A:B";
+                // strip off any <>s if people included them
+                teamlink = teamlink.TrimStart('<').TrimEnd('>');
 
                 // first check to see if this person already has a submission
                 var checkExistingRequest = sheetsService.Spreadsheets.Values.Get(SpreadsheetId, range);
@@ -247,7 +297,7 @@ namespace DiceMastersDiscordBot.Services
                     var updateRequest = sheetsService.Spreadsheets.Values.Update(valueRange, SpreadsheetId, range);
                     updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                     var appendReponse = updateRequest.Execute();
-                    return "Team updated!";
+                    return $"Thanks {userName}, your team was updated!";
                 }
                 else
                 {
