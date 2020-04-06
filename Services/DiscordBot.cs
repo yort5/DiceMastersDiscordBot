@@ -73,7 +73,7 @@ namespace DiceMastersDiscordBot.Services
                 await _client.StartAsync();
 
                 // Block this task until the program is closed.
-                await Task.Delay(-1);
+                await Task.Delay(-1, stoppingToken);
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
