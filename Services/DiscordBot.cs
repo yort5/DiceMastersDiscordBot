@@ -543,9 +543,9 @@ namespace DiceMastersDiscordBot.Services
                 else
                 {
                     int diff = (7 + (today.DayOfWeek - DayOfWeek.Tuesday)) % 7;
-                    nextDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
+                    nextDate = today.Date.AddDays(-1 * diff).AddDays(7).Date;
                 }
-                return $"{today.Year}-{nextDate.ToString("MMMM")}-{nextDate.Day}";
+                return $"{nextDate.Year}-{nextDate.ToString("MMMM")}-{nextDate.Day}";
             }
         }
 
@@ -563,9 +563,9 @@ namespace DiceMastersDiscordBot.Services
                 else
                 {
                     int diff = (7 + (today.DayOfWeek - DayOfWeek.Thursday)) % 7;
-                    nextDate = DateTime.Today.AddDays(-1 * diff).AddDays(7).Date;
+                    nextDate = today.Date.AddDays(-1 * diff).AddDays(7).Date;
                 }
-                return $"{today.Year}-{nextDate.ToString("MMMM")}-{nextDate.Day}";
+                return $"{nextDate.Year}-{nextDate.ToString("MMMM")}-{nextDate.Day}";
             }
         }
 
