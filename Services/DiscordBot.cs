@@ -479,7 +479,7 @@ namespace DiceMastersDiscordBot.Services
             StringBuilder format = new StringBuilder();
             foreach (var row in sheetResponse.Values)
             {
-                if (row.Count >= 4 && row[0].ToString().ToLower() == DiceFightSheetName.ToLower())
+                if (row.Count >= 3 && row[0].ToString().ToLower() == DiceFightSheetName.ToLower())
                 {
                     DiceFightHomeSheet sheetInfo = new DiceFightHomeSheet()
                     {
