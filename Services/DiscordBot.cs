@@ -287,14 +287,15 @@ namespace DiceMastersDiscordBot.Services
         {
             var sheetsService = AuthorizeGoogleSheets();
             ColumnInput input;
-            if(eventName == "weekly-dice-arena")
+            string response = DMBotSubmitTeamHint;
+            if (eventName == "weekly-dice-arena")
             {
                 input = new ColumnInput()
                 {
                     Column1Value = message.Author.Username,
                     Column2Value = teamlink
                 };
-                return SendLinkToGoogle(sheetsService, message, WDASheetId, WdaSheetName, input);
+                response = SendLinkToGoogle(sheetsService, message, WDASheetId, WdaSheetName, input);
             }
             else if (eventName == "dice-fight")
             {
@@ -307,13 +308,12 @@ namespace DiceMastersDiscordBot.Services
                     Column3Value = teamlink,
                     Column4Value = winName
                 };
-                string returnMsg = SendLinkToGoogle(sheetsService, message, DiceFightSheetId, dfInfo.SheetName, input);
+                response = SendLinkToGoogle(sheetsService, message, DiceFightSheetId, dfInfo.SheetName, input);
                 //SendDiceFightLinkToGoogle(sheetsService, message);
                 if(string.IsNullOrWhiteSpace(winName))
                 {
                     message.Author.SendMessageAsync(DiceFightAskForWin);
                 }
-                return returnMsg;
             }
             else if(eventName == "team-of-the-month")
             {
@@ -322,9 +322,14 @@ namespace DiceMastersDiscordBot.Services
                     Column1Value = message.Author.Username,
                     Column2Value = teamlink
                 };
-                return SendLinkToGoogle(sheetsService, message, TotMSheetId, TotMSheetName, input);
+                response = SendLinkToGoogle(sheetsService, message, TotMSheetId, TotMSheetName, input);
             }
-            return DMBotSubmitTeamHint;
+            if( !response.Equals(DMBotSubmitTeamHint) )
+            {
+                message.Author.SendMessageAsync($"The following team was successfully submitted for {eventName}");
+                message.Author.SendMessageAsync(teamlink);
+            }
+            return response;
         }
 
 
