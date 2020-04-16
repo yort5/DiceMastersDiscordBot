@@ -25,6 +25,7 @@ namespace DiceMastersDiscordBot
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
+                    services.AddSingleton<DMSheetService>();
                     services.AddHostedService<DiscordBot>();
                     //services.AddHostedService<ServiceB>();
                 })
