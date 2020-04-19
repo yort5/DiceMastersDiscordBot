@@ -210,6 +210,14 @@ namespace DiceMastersDiscordBot.Services
             {
                 return _sheetService.GetFormatFromGoogle(sheetsService, message, _sheetService.TotMSheetId, Refs.TotMSheetName);
             }
+            else if (message.Channel.Name == "monthly-one-shot-team-submission")
+            {
+                return _sheetService.GetFormatFromGoogle(sheetsService, message, _sheetService.CRGRM1SSheetId, Refs.CRGRM1SSheetName);
+            }
+            else if (message.Channel.Name == "tttd-team-submission")
+            {
+                return _sheetService.GetFormatFromGoogle(sheetsService, message, _sheetService.CRGRTTTDSheetId, Refs.CRGRTTTDSheetName);
+            }
             return "I can't accept team links on this channel";
         }
 
@@ -253,6 +261,24 @@ namespace DiceMastersDiscordBot.Services
                     Column2Value = teamlink
                 };
                 response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.TotMSheetId, Refs.TotMSheetName, input);
+            }
+            else if(eventName == "monthly-one-shot")
+            {
+                input = new ColumnInput()
+                {
+                    Column1Value = message.Author.Username,
+                    Column2Value = teamlink
+                };
+                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.CRGRM1SSheetId, Refs.CRGRM1SSheetName, input);
+            }
+            else if(eventName == "TTTD")
+            {
+                input = new ColumnInput()
+                {
+                    Column1Value = message.Author.Username,
+                    Column2Value = teamlink
+                };
+                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.CRGRTTTDSheetId, Refs.CRGRTTTDSheetName, input);
             }
             if( !response.Equals(Refs.DMBotSubmitTeamHint) )
             {

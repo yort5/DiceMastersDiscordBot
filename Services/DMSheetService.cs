@@ -20,6 +20,8 @@ namespace DiceMastersDiscordBot.Services
         private readonly string _WDASheetId;
         private readonly string _DiceFightSheetId;
         private readonly string _TotMSheetId;
+        private readonly string _CRGRM1SSheetId;
+        private readonly string _CRGRTTTDSheetId;
 
         public DMSheetService(ILoggerFactory loggerFactory, IConfiguration config)
         {
@@ -29,6 +31,8 @@ namespace DiceMastersDiscordBot.Services
             _WDASheetId = config["WeeklyDiceArenaSheetId"];
             _DiceFightSheetId = config["DiceFightSheetId"];
             _TotMSheetId = config["TeamOfTheMonthSheetId"];
+            _CRGRM1SSheetId = config["CRGRMonthlyOneShotSheetId"];
+            _CRGRTTTDSheetId = config["CRGRTwoTeamTakeDownSheetId"];
         }
         public void CheckSheets()
         {
@@ -39,6 +43,8 @@ namespace DiceMastersDiscordBot.Services
         public string WDASheetId { get { return _WDASheetId; } }
         public string DiceFightSheetId { get { return _DiceFightSheetId; } }
         public string TotMSheetId { get { return _TotMSheetId; } }
+        public string CRGRM1SSheetId { get { return _CRGRM1SSheetId; } }
+        public string CRGRTTTDSheetId { get { return _CRGRTTTDSheetId; } }
 
         public SheetsService AuthorizeGoogleSheets()
         {
@@ -164,6 +170,16 @@ namespace DiceMastersDiscordBot.Services
                 sheetId = TotMSheetId;
                 sheetName = Refs.TotMSheetName;
             }
+            else if (message.Channel.Name == "monthly-one-shot-team-submission")
+            {
+                sheetId = CRGRM1SSheetId;
+                sheetName = Refs.CRGRM1SSheetName;
+            }
+            else if (message.Channel.Name == "tttd-team-submission")
+            {
+                sheetId = CRGRTTTDSheetId;
+                sheetName = Refs.CRGRTTTDSheetName;
+            }
             else
             {
                 return "Sorry, can't do that on this channel";
@@ -210,6 +226,16 @@ namespace DiceMastersDiscordBot.Services
             {
                 sheetId = TotMSheetId;
                 sheetName = Refs.TotMSheetName;
+            }
+            else if (message.Channel.Name == "monthly-one-shot-team-submission")
+            {
+                sheetId = CRGRM1SSheetId;
+                sheetName = Refs.CRGRM1SSheetName;
+            }
+            else if (message.Channel.Name == "tttd-team-submission")
+            {
+                sheetId = CRGRTTTDSheetId;
+                sheetName = Refs.CRGRTTTDSheetName;
             }
             else
             {
