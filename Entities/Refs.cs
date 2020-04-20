@@ -12,6 +12,8 @@ namespace DiceMastersDiscordBot.Entities
         internal const string EVENT_WDA = "weekly-dice-arena";
         internal const string EVENT_DICE_FIGHT = "dice-fight";
         internal const string EVENT_TOTM = "team-of-the-month";
+        internal const string EVENT_CRGR_M1S = "monthly-one-shot";
+        internal const string EVENT_CRGR_TTTD = "two-team-take-down";
 
         #region Private Properties
         internal static string WdaSheetName
@@ -62,12 +64,27 @@ namespace DiceMastersDiscordBot.Entities
                 return $"{today.Year}-{today.ToString("MMMM")}";
             }
         }
-
+        internal static string CRGRM1SSheetName
+        {
+            get
+            {
+                DateTime today = DateTime.Now;
+                return $"{today.Year}-{today.ToString("MMMM")}";
+            }
+        }
+        internal static string CRGRTTTDSheetName
+        {
+            get
+            {
+                DateTime today = DateTime.Now;
+                return $"{today.Year}-{today.ToString("MMMM")}";
+            }
+        }
         public static string DMBotSubmitTeamHint
         {
             get
             {
-                return $"Please send a Direct Message to the {Refs.BOT_NAME} with the format \"submit [event] [teambuilder link]\" where [event] is{Environment.NewLine}Weekly Dice Arena: WDA{Environment.NewLine}Dice Fight: DF{Environment.NewLine}Team of the Month: TOTM";
+                return $"Please send a Direct Message to the {Refs.BOT_NAME} with the format \"submit [event] [teambuilder link]\" where [event] is{Environment.NewLine}Weekly Dice Arena: WDA{Environment.NewLine}Dice Fight: DF{Environment.NewLine}Team of the Month: TOTM{Environment.NewLine}CRGR Monthly One Shot: M1S{Environment.NewLine}CRGR Two Team Take Down: TTTD";
             }
         }
 
@@ -82,7 +99,7 @@ namespace DiceMastersDiscordBot.Entities
                 helpString.Append($"{nl}    !format - returns the current format for that channel's event");
                 helpString.Append($"{nl}    !submit <teambuilder link> - submits your team for the event. Your link will be immediately deleted so others can't see it.");
                 helpString.Append($"{nl}VIA DIRECT MESSAGE - you can also send the {BOT_NAME} a direct message");
-                helpString.Append($"{nl}    !submit <event> <teambuilder link> - current supported events are wda (Weekly Dice Arena), df (Dice Fight) and totm (Team of the Month)");
+                helpString.Append($"{nl}    !submit <event> <teambuilder link> - current supported events are wda (Weekly Dice Arena), df (Dice Fight), totm (Team of the Month), m1s (CRGR - Monthly One Shot, and tttd(CRGR - Two Team Take Down)");
                 helpString.Append($"{nl}Example: !submit wda http://tb.dicecoalition.com/blahblah");
                 helpString.Append($"{nl}If you have any problems or just general feedback, please DM Yort.");
                 return helpString.ToString();
