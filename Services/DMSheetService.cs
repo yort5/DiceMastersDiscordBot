@@ -188,6 +188,11 @@ namespace DiceMastersDiscordBot.Services
 
         }
 
+        internal void MarkPlayerHere(SocketMessage message)
+        {
+            throw new NotImplementedException();
+        }
+
         internal string GetCurrentPlayerList(SocketMessage message)
         {
             var sheetsService = AuthorizeGoogleSheets();
@@ -258,26 +263,12 @@ namespace DiceMastersDiscordBot.Services
                         EventDate = row[0].ToString(),
                         SheetName = row[1].ToString(),
                         FormatDescription = row[2].ToString(),
-                        Bans = row[3].ToString()
+                        Info = row[3].ToString()
                     };
                     return sheetInfo;
                 }
             }
             return null;
-        }
-
-
-        internal string UpdateDiceFightWin(SheetsService sheetsService)
-        {
-            try
-            {
-                return string.Empty;
-            }
-            catch (Exception exc)
-            {
-                Console.WriteLine($"Exception in UpdateWinName: {exc.Message}");
-                return "Sorry, I was unable to record your WIN Name. Please contact Yort and tell him what went wrong";
-            }
         }
 
         internal string GetWINName(SheetsService sheetsService, string sheetId, string discordName)

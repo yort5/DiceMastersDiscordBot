@@ -10,6 +10,6 @@ namespace DiceMastersDiscordBot.Entities
         public string EventDate;
         public string SheetName;
         public string FormatDescription;
-        public string Bans;
+        public string Info;
     }
 }

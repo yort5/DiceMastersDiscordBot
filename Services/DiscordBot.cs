@@ -170,6 +170,10 @@ namespace DiceMastersDiscordBot.Services
             {
                 await message.Channel.SendMessageAsync(_sheetService.GetCurrentPlayerList(message));
             }
+            else if (message.Content.StartsWith(".here"))
+            {
+                _sheetService.MarkPlayerHere(message);
+            }
             else if (message.Content.StartsWith("!help"))
             {
                 await message.Channel.SendMessageAsync(Refs.DMBotCommandHelpString);
@@ -198,7 +202,7 @@ namespace DiceMastersDiscordBot.Services
                     if(s ==  null) return "No information found for this week yet";
 
                     var nl = Environment.NewLine;
-                    return $"Dice Fight for {s.EventDate}{nl}Format - {s.FormatDescription}{nl}Bans - {s.Bans}";
+                    return $"Dice Fight for **{s.EventDate}**{nl}__Format__ - {s.FormatDescription}{nl}__Additional info:__{nl}{s.Info}";
                 }
                 catch (Exception exc)
                 {
