@@ -188,41 +188,22 @@ namespace DiceMastersDiscordBot.Services
 
         private string GetCurrentFormat(SocketMessage message)
         {
+            var homeSheet = _sheetService.GetHomeSheet(message.Channel.Name);
             var sheetsService = _sheetService.AuthorizeGoogleSheets();
 
-            if (message.Channel.Name == "weekly-dice-arena")
-            {
-                return _sheetService.GetFormatFromGoogle(sheetsService, message, _sheetService.WDASheetId, Refs.WdaSheetName);
-            }
-            else if (message.Channel.Name == "dice-fight")
-            {
                 try
                 {
-                    DiceFightHomeSheet s = _sheetService.GetDiceFightHomeSheet(sheetsService);
-                    if(s ==  null) return "No information found for this week yet";
+                    if(homeSheet ==  null) return "No information found for this week yet";
 
                     var nl = Environment.NewLine;
-                    return $"Dice Fight for **{s.EventDate}**{nl}__Format__ - {s.FormatDescription}{nl}__Additional info:__{nl}{s.Info}";
+                var eventName = homeSheet.EventName != null ? string.Format($"{homeSheet.EventName}{nl}") : string.Empty;
+                    return $"{eventName}**{homeSheet.EventDate}**{nl}__Format__ - {homeSheet.FormatDescription}{nl}__Additional info:__{nl}{homeSheet.Info}";
                 }
                 catch (Exception exc)
                 {
-                    Console.WriteLine($"Exception in Dice Fight: {exc.Message}");
-                    return $"Ooops! Something went wrong with Dice Fight - please contact Yort (bot) or jacquesblondes (Dice Fight)";
+                    Console.WriteLine($"Exception in GetCurrentFormat: {exc.Message}");
+                    return $"Ooops! Something went wrong! - please contact Yort (bot)";
                 }
-            }
-            else if (message.Channel.Name == "team-of-the-month")
-            {
-                return _sheetService.GetFormatFromGoogle(sheetsService, message, _sheetService.TotMSheetId, Refs.TotMSheetName);
-            }
-            else if (message.Channel.Name == "monthly-one-shot-team-submission")
-            {
-                return _sheetService.GetFormatFromGoogle(sheetsService, message, _sheetService.CRGRM1SSheetId, Refs.CRGRM1SSheetName);
-            }
-            else if (message.Channel.Name == "tttd-team-submission")
-            {
-                return _sheetService.GetFormatFromGoogle(sheetsService, message, _sheetService.CRGRTTTDSheetId, Refs.CRGRTTTDSheetName);
-            }
-            return "I can't accept team links on this channel";
         }
 
          private string SubmitTeamLink(string eventName, string teamlink, SocketMessage message)
@@ -230,19 +211,19 @@ namespace DiceMastersDiscordBot.Services
             var sheetsService = _sheetService.AuthorizeGoogleSheets();
             ColumnInput input;
             string response = Refs.DMBotSubmitTeamHint;
+            HomeSheet homeSheet = _sheetService.GetHomeSheet(eventName);
             if (eventName == "weekly-dice-arena")
             {
                 input = new ColumnInput()
                 {
-                    Column1Value = message.Author.Username,
-                    Column2Value = teamlink
+                    Column2Value = message.Author.Username,
+                    Column3Value = teamlink
                 };
-                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.WDASheetId, Refs.WdaSheetName, input);
+                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.WDASheetId, homeSheet.SheetName, input);
             }
             else if (eventName == "dice-fight")
             {
                 string winName = _sheetService.GetWINName(sheetsService, _sheetService.DiceFightSheetId, message.Author.Username);
-                DiceFightHomeSheet dfInfo = _sheetService.GetDiceFightHomeSheet(sheetsService);
                 input = new ColumnInput()
                 {
                     Column1Value = DateTime.Now.ToString(),
@@ -250,7 +231,7 @@ namespace DiceMastersDiscordBot.Services
                     Column3Value = teamlink,
                     Column4Value = winName
                 };
-                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.DiceFightSheetId, dfInfo.SheetName, input);
+                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.DiceFightSheetId, homeSheet.SheetName, input);
                 //SendDiceFightLinkToGoogle(sheetsService, message);
                 if(string.IsNullOrWhiteSpace(winName))
                 {
@@ -264,7 +245,7 @@ namespace DiceMastersDiscordBot.Services
                     Column1Value = message.Author.Username,
                     Column2Value = teamlink
                 };
-                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.TotMSheetId, Refs.TotMSheetName, input);
+                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.TotMSheetId, homeSheet.SheetName, input);
             }
             else if(eventName == "monthly-one-shot")
             {

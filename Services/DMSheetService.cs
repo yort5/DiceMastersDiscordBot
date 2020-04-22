@@ -152,49 +152,25 @@ namespace DiceMastersDiscordBot.Services
         internal string GetCurrentPlayerCount(SocketMessage message)
         {
             var sheetsService = AuthorizeGoogleSheets();
-            string sheetId;
-            string sheetName;
-            if (message.Channel.Name == "weekly-dice-arena")
-            {
-                sheetId = WDASheetId;
-                sheetName = Refs.WdaSheetName;
-            }
-            else if (message.Channel.Name == "dice-fight")
-            {
-                DiceFightHomeSheet df = GetDiceFightHomeSheet(sheetsService);
-                sheetId = DiceFightSheetId;
-                sheetName = df.SheetName;
-            }
-            else if (message.Channel.Name == "team-of-the-month")
-            {
-                sheetId = TotMSheetId;
-                sheetName = Refs.TotMSheetName;
-            }
-            else if (message.Channel.Name == "monthly-one-shot-team-submission")
-            {
-                sheetId = CRGRM1SSheetId;
-                sheetName = Refs.CRGRM1SSheetName;
-            }
-            else if (message.Channel.Name == "tttd-team-submission")
-            {
-                sheetId = CRGRTTTDSheetId;
-                sheetName = Refs.CRGRTTTDSheetName;
-            }
-            else
-            {
-                return "Sorry, can't do that on this channel";
-            }
-
+            HomeSheet homesheet = GetHomeSheet(message.Channel.Name);
+            int nameIndex = 1;
             try
             {
                 // Define request parameters.
-                var range = $"{sheetName}!A:D";
+                var range = $"{homesheet.SheetName}!A:D";
 
                 // load the data
-                var sheetRequest = sheetsService.Spreadsheets.Values.Get(sheetId, range);
+                var sheetRequest = sheetsService.Spreadsheets.Values.Get(homesheet.SheetId, range);
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
-                return $"There are currently {values.Count - 1} humans signed up for this week's event!";
+                StringBuilder currentPlaylerList = new StringBuilder();
+                currentPlaylerList.AppendLine($"There are currently {values.Count - 1} humans registered:");
+                //for (int i = 1; i < values.Count; i++)
+                //{
+                //    string name = values[i][nameIndex].ToString();
+                //    currentPlaylerList.AppendLine(name);
+                //}
+                return currentPlaylerList.ToString();
             }
             catch (Exception exc)
             {
@@ -212,48 +188,15 @@ namespace DiceMastersDiscordBot.Services
         internal string GetCurrentPlayerList(SocketMessage message)
         {
             var sheetsService = AuthorizeGoogleSheets();
-            string sheetId;
-            string sheetName;
-            int nameIndex = 0;
-            if (message.Channel.Name == "weekly-dice-arena")
-            {
-                sheetId = WDASheetId;
-                sheetName = Refs.WdaSheetName;
-            }
-            else if (message.Channel.Name == "dice-fight")
-            {
-                DiceFightHomeSheet df = GetDiceFightHomeSheet(sheetsService);
-                sheetId = DiceFightSheetId;
-                sheetName = df.SheetName;
-                nameIndex = 1;
-            }
-            else if (message.Channel.Name == "team-of-the-month")
-            {
-                sheetId = TotMSheetId;
-                sheetName = Refs.TotMSheetName;
-            }
-            else if (message.Channel.Name == "monthly-one-shot-team-submission")
-            {
-                sheetId = CRGRM1SSheetId;
-                sheetName = Refs.CRGRM1SSheetName;
-            }
-            else if (message.Channel.Name == "tttd-team-submission")
-            {
-                sheetId = CRGRTTTDSheetId;
-                sheetName = Refs.CRGRTTTDSheetName;
-            }
-            else
-            {
-                return "Sorry, can't do that on this channel";
-            }
-
+            HomeSheet homesheet = GetHomeSheet(message.Channel.Name);
+            int nameIndex = 1;
             try
             {
                 // Define request parameters.
-                var range = $"{sheetName}!A:D";
+                var range = $"{homesheet.SheetName}!A:D";
 
                 // load the data
-                var sheetRequest = sheetsService.Spreadsheets.Values.Get(sheetId, range);
+                var sheetRequest = sheetsService.Spreadsheets.Values.Get(homesheet.SheetId, range);
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
                 StringBuilder currentPlaylerList = new StringBuilder();
@@ -274,25 +217,73 @@ namespace DiceMastersDiscordBot.Services
         }
 
         #region Helper Methods
-        internal DiceFightHomeSheet GetDiceFightHomeSheet(SheetsService sheetsService)
+        internal HomeSheet GetHomeSheet(string channelName)
         {
-            var range = $"HomeSheet!A:D";
-            var sheetRequest = sheetsService.Spreadsheets.Values.Get(DiceFightSheetId, range);
-            var sheetResponse = sheetRequest.Execute();
-            StringBuilder format = new StringBuilder();
-            foreach (var row in sheetResponse.Values)
+            var sheetsService = AuthorizeGoogleSheets();
+            string sheetId;
+            string sheetName;
+            if (channelName == "weekly-dice-arena")
             {
-                if (row.Count >= 3 && row[0].ToString().ToLower() == Refs.DiceFightSheetName.ToLower())
+                sheetId = WDASheetId;
+                sheetName = Refs.WdaSheetName;
+            }
+            else if (channelName == "dice-fight")
+            {
+                sheetId = DiceFightSheetId;
+                sheetName = Refs.DiceFightSheetName;
+            }
+            else if (channelName == "team-of-the-month")
+            {
+                sheetId = TotMSheetId;
+                sheetName = Refs.TotMSheetName;
+            }
+            else if (channelName == "monthly-one-shot-team-submission")
+            {
+                sheetId = CRGRM1SSheetId;
+                sheetName = Refs.CRGRM1SSheetName;
+            }
+            else if (channelName == "tttd-team-submission")
+            {
+                sheetId = CRGRTTTDSheetId;
+                sheetName = Refs.CRGRTTTDSheetName;
+            }
+            else
+            {
+                return null;
+            }
+
+            try
+            {
+                var range = $"HomeSheet!A:D";
+                var sheetRequest = sheetsService.Spreadsheets.Values.Get(sheetId, range);
+                var sheetResponse = sheetRequest.Execute();
+                HomeSheet sheetInfo = new HomeSheet();
+                
+                try
                 {
-                    DiceFightHomeSheet sheetInfo = new DiceFightHomeSheet()
-                    {
-                        EventDate = row[0].ToString(),
-                        SheetName = row[1].ToString(),
-                        FormatDescription = row[2].ToString(),
-                        Info = row[3].ToString()
-                    };
-                    return sheetInfo;
+                    sheetInfo.EventName = sheetResponse.Values[0][1].ToString();
                 }
+                catch
+                {
+                    // no biggee if it isn't there 
+                }
+
+                sheetInfo.SheetId = sheetId;
+                foreach (var row in sheetResponse.Values)
+                {
+                    if (row.Count >= 1 && row[0].ToString().ToLower() == sheetName.ToLower())
+                    {
+                        sheetInfo.EventDate = row[0] != null ? row[0].ToString() : string.Empty;
+                        sheetInfo.SheetName = row[1] != null ? row[1].ToString() : string.Empty;
+                        sheetInfo.FormatDescription = row.Count >= 3 ? row[2].ToString() : "No information for this event yet";
+                        sheetInfo.Info = row.Count >= 4 ? row[3].ToString() : string.Empty;
+                        return sheetInfo;
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                return null;
             }
             return null;
         }
