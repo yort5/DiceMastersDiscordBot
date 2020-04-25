@@ -189,7 +189,12 @@ namespace DiceMastersDiscordBot.Services
         {
             var sheetsService = AuthorizeGoogleSheets();
             HomeSheet homesheet = GetHomeSheet(message.Channel.Name);
-            int nameIndex = 1;
+            int nameIndex = 0;
+
+            if(message.Channel.Name == "dice-fight")
+            {
+                nameIndex = 1;
+            }
             try
             {
                 // Define request parameters.
@@ -211,7 +216,7 @@ namespace DiceMastersDiscordBot.Services
             catch (Exception exc)
             {
                 Console.WriteLine(exc.Message);
-                return "Sorry, wasn't able to determine player count";
+                return "Sorry, wasn't able to determine player list";
             }
 
         }

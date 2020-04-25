@@ -98,6 +98,7 @@ namespace DiceMastersDiscordBot.Entities
                 helpString.Append($"{nl}WITHIN A CHANNEL:");
                 helpString.Append($"{nl}    !format - returns the current format for that channel's event");
                 helpString.Append($"{nl}    !submit <teambuilder link> - submits your team for the event. Your link will be immediately deleted so others can't see it.");
+                helpString.Append($"{nl}    !list - lists the current people signed up for the event.");
                 helpString.Append($"{nl}VIA DIRECT MESSAGE - you can also send the {BOT_NAME} a direct message");
                 helpString.Append($"{nl}    !submit <event> <teambuilder link> - current supported events are wda (Weekly Dice Arena), df (Dice Fight), totm (Team of the Month), m1s (CRGR - Monthly One Shot, and tttd(CRGR - Two Team Take Down)");
                 helpString.Append($"{nl}Example: !submit wda http://tb.dicecoalition.com/blahblah");
