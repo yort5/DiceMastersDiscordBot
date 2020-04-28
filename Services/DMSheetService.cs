@@ -189,11 +189,11 @@ namespace DiceMastersDiscordBot.Services
         {
             var sheetsService = AuthorizeGoogleSheets();
             HomeSheet homesheet = GetHomeSheet(message.Channel.Name);
-            int nameIndex = 0;
+            int nameIndex = 1;
 
-            if(message.Channel.Name == "dice-fight")
+            if(message.Channel.Name == Refs.EVENT_TOTM)
             {
-                nameIndex = 1;
+                nameIndex = 0;
             }
             try
             {
@@ -205,7 +205,7 @@ namespace DiceMastersDiscordBot.Services
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
                 StringBuilder currentPlaylerList = new StringBuilder();
-                currentPlaylerList.AppendLine($"There are currently {values.Count - 1} humans registered:");
+                currentPlaylerList.AppendLine($"There are currently {values.Count - 1} humans registered (and no robots):");
                 for (int i = 1; i < values.Count; i++)
                 {
                     string name = values[i][nameIndex].ToString();
