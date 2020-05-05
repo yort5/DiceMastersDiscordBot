@@ -180,9 +180,54 @@ namespace DiceMastersDiscordBot.Services
 
         }
 
-        internal void MarkPlayerHere(SocketMessage message)
+        internal string MarkPlayerHere(SocketMessage message)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var sheetService = AuthorizeGoogleSheets();
+                var sheet = GetHomeSheet(message.Channel.Name);
+                // Define request parameters.
+                var userName = message.Author.Username;
+                var range = $"{sheet.SheetName}!A:D";
+                // strip off any <>s if people included them
+                //userValue = userValue.TrimStart('<').TrimEnd('>');
+
+                // first check to see if this person already has a submission
+                var checkExistingRequest = sheetService.Spreadsheets.Values.Get(sheet.SheetId, range);
+                var existingRecords = checkExistingRequest.Execute();
+                ColumnInput columnInput = null;
+                foreach (var record in existingRecords.Values)
+                {
+                    if (record.Contains(userName))
+                    {
+                        var index = existingRecords.Values.IndexOf(record);
+                        range = $"{sheet.SheetName}!A{index + 1}";
+
+                        columnInput = new ColumnInput();
+                        columnInput.Column1Value = "HERE";
+                        columnInput.Column2Value = record[1] != null ? record[1].ToString() : string.Empty; ;
+                        columnInput.Column3Value = record[2] != null ? record[3].ToString() : string.Empty; ;
+                        columnInput.Column4Value = record[3] != null ? record[3].ToString() : string.Empty; ;
+ 
+                        var oblist = new List<object>()
+                            { columnInput.Column1Value, columnInput.Column2Value, columnInput.Column3Value, columnInput.Column4Value};
+                        var valueRange = new ValueRange();
+                        valueRange.Values = new List<IList<object>> { oblist };
+
+                        // Performing Update Operation...
+                        var updateRequest = sheetService.Spreadsheets.Values.Update(valueRange, sheet.SheetId, range);
+                        updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                        var appendReponse = updateRequest.Execute();
+                        return $"Player {message.Author.Username} marked as here in the spreadsheet";
+                    }
+                }
+                return $"Sorry, could not mark {message.Author.Username} as HERE as they were not found in the spreadsheet for this event.";
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+                return "There was an error trying to add your info";
+            }
         }
 
         internal string GetCurrentPlayerList(SocketMessage message)

@@ -170,9 +170,9 @@ namespace DiceMastersDiscordBot.Services
             {
                 await message.Channel.SendMessageAsync(_sheetService.GetCurrentPlayerList(message));
             }
-            else if (message.Content.StartsWith(".here"))
+            else if (message.Content.StartsWith(".here") || message.Content.StartsWith("!here"))
             {
-                _sheetService.MarkPlayerHere(message);
+                await message.Channel.SendMessageAsync(_sheetService.MarkPlayerHere(message));
             }
             else if (message.Content.StartsWith("!help"))
             {
