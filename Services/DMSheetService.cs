@@ -206,7 +206,7 @@ namespace DiceMastersDiscordBot.Services
                         columnInput = new ColumnInput();
                         columnInput.Column1Value = "HERE";
                         columnInput.Column2Value = record[1] != null ? record[1].ToString() : string.Empty; ;
-                        columnInput.Column3Value = record[2] != null ? record[3].ToString() : string.Empty; ;
+                        columnInput.Column3Value = record[2] != null ? record[2].ToString() : string.Empty; ;
                         columnInput.Column4Value = record[3] != null ? record[3].ToString() : string.Empty; ;
  
                         var oblist = new List<object>()
