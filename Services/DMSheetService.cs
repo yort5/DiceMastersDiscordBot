@@ -205,9 +205,9 @@ namespace DiceMastersDiscordBot.Services
 
                         columnInput = new ColumnInput();
                         columnInput.Column1Value = "HERE";
-                        columnInput.Column2Value = record[1] != null ? record[1].ToString() : string.Empty; ;
-                        columnInput.Column3Value = record[2] != null ? record[2].ToString() : string.Empty; ;
-                        columnInput.Column4Value = record[3] != null ? record[3].ToString() : string.Empty; ;
+                        columnInput.Column2Value = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty; ;
+                        columnInput.Column3Value = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty; ;
+                        columnInput.Column4Value = (record.Count >= 4 && record[3] != null) ? record[3].ToString() : string.Empty; ;
  
                         var oblist = new List<object>()
                             { columnInput.Column1Value, columnInput.Column2Value, columnInput.Column3Value, columnInput.Column4Value};
@@ -235,11 +235,6 @@ namespace DiceMastersDiscordBot.Services
             var sheetsService = AuthorizeGoogleSheets();
             HomeSheet homesheet = GetHomeSheet(message.Channel.Name);
             int nameIndex = 1;
-
-            if(message.Channel.Name == Refs.EVENT_TOTM)
-            {
-                nameIndex = 0;
-            }
             try
             {
                 // Define request parameters.

@@ -216,6 +216,7 @@ namespace DiceMastersDiscordBot.Services
             {
                 input = new ColumnInput()
                 {
+                    Column1Value = DateTime.Now.ToString(),
                     Column2Value = message.Author.Username,
                     Column3Value = teamlink
                 };
@@ -242,8 +243,9 @@ namespace DiceMastersDiscordBot.Services
             {
                 input = new ColumnInput()
                 {
-                    Column1Value = message.Author.Username,
-                    Column2Value = teamlink
+                    Column1Value = DateTime.Now.ToString(),
+                    Column2Value = message.Author.Username,
+                    Column3Value = teamlink
                 };
                 response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.TotMSheetId, homeSheet.SheetName, input);
             }
