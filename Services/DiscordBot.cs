@@ -87,7 +87,7 @@ namespace DiceMastersDiscordBot.Services
             var dmchannelID = await message.Author.GetOrCreateDMChannelAsync();
             if (message.Channel.Id == dmchannelID.Id)
             {
-                if (message.Content.ToLower().StartsWith("submit") || message.Content.ToLower().StartsWith("!submit"))
+                if (message.Content.ToLower().StartsWith("submit") || message.Content.ToLower().StartsWith("!submit") || message.Content.ToLower().StartsWith(".submit"))
                 {
                     try
                     {
@@ -122,7 +122,7 @@ namespace DiceMastersDiscordBot.Services
                         await message.Channel.SendMessageAsync("If you think you're doing it right and it still doesn't work, message Yort or post in #bot-uprising");
                     }
                 }
-                else if(message.Content.ToLower().StartsWith("!win"))
+                else if (message.Content.ToLower().StartsWith("!win") || message.Content.ToLower().StartsWith(".win"))
                 {
                     try
                     {
@@ -134,7 +134,7 @@ namespace DiceMastersDiscordBot.Services
                             _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.DiceFightSheetId, "WINSheet", ci));
                         await message.Channel.SendMessageAsync("Also, I hope to do this automatically soon, but I am already up to late, so would you mind terribly re-submitting your team so your WIN name gets recorded properly? Thanks, I reaZZZZZZZZZ");
                         // update current DiceFight sheet?
-                        
+
                     }
                     catch (Exception exc)
                     {
@@ -151,30 +151,30 @@ namespace DiceMastersDiscordBot.Services
             {
                 await message.Channel.SendMessageAsync("Pong!");
             }
-            else if(message.Content.StartsWith(SUBMIT_STRING))
+            else if (message.Content.ToLower().StartsWith(SUBMIT_STRING) || message.Content.ToLower().StartsWith(".submit"))
             {
                 // first delete the original message
                 await message.Channel.DeleteMessageAsync(message);
-                var teamlink = message.Content.TrimStart(SUBMIT_STRING.ToCharArray()).Trim();
+                var teamlink = message.Content.TrimStart(SUBMIT_STRING.ToCharArray()).TrimStart(".submit".ToCharArray()).Trim();
                 await message.Channel.SendMessageAsync(SubmitTeamLink(message.Channel.Name, teamlink, message));
             }
-            else if (message.Content.StartsWith("!format"))
+            else if (message.Content.ToLower().StartsWith(".format") || message.Content.ToLower().StartsWith("!format"))
             {
                 await message.Channel.SendMessageAsync(GetCurrentFormat(message));
             }
-            else if (message.Content.StartsWith("!count"))
+            else if (message.Content.ToLower().StartsWith(".count") || message.Content.ToLower().StartsWith("!count"))
             {
                 await message.Channel.SendMessageAsync(_sheetService.GetCurrentPlayerCount(message));
             }
-            else if (message.Content.StartsWith("!list"))
+            else if (message.Content.ToLower().StartsWith(".list") || message.Content.ToLower().StartsWith("!list"))
             {
                 await message.Channel.SendMessageAsync(_sheetService.GetCurrentPlayerList(message));
             }
-            else if (message.Content.StartsWith(".here") || message.Content.StartsWith("!here"))
+            else if (message.Content.ToLower().StartsWith(".here") || message.Content.ToLower().StartsWith("!here"))
             {
                 await message.Channel.SendMessageAsync(_sheetService.MarkPlayerHere(message));
             }
-            else if (message.Content.StartsWith("!help"))
+            else if (message.Content.ToLower().StartsWith(".help") || message.Content.ToLower().StartsWith("!help"))
             {
                 await message.Channel.SendMessageAsync(Refs.DMBotCommandHelpString);
             }
