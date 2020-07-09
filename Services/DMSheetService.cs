@@ -186,6 +186,15 @@ namespace DiceMastersDiscordBot.Services
 
         internal string MarkPlayerHere(SocketMessage message)
         {
+            return MarkPlayer(message, "HERE");
+        }
+        internal string MarkPlayerDropped(SocketMessage message)
+        {
+            return MarkPlayer(message, "DROPPED");
+        }
+
+        internal string MarkPlayer(SocketMessage message, string status)
+        {
             try
             {
                 var sheetService = AuthorizeGoogleSheets();
@@ -211,7 +220,7 @@ namespace DiceMastersDiscordBot.Services
                             range = $"{sheet.SheetName}!A{index + 1}";
 
                             columnInput = new ColumnInput();
-                            columnInput.Column1Value = "HERE";
+                            columnInput.Column1Value = status;
                             columnInput.Column2Value = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty; ;
                             columnInput.Column3Value = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty; ;
                             columnInput.Column4Value = (record.Count >= 4 && record[3] != null) ? record[3].ToString() : string.Empty; ;
@@ -225,11 +234,11 @@ namespace DiceMastersDiscordBot.Services
                             var updateRequest = sheetService.Spreadsheets.Values.Update(valueRange, sheet.SheetId, range);
                             updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                             var appendReponse = updateRequest.Execute();
-                            return $"Player {message.Author.Username} marked as here in the spreadsheet";
+                            return $"Player {message.Author.Username} marked as {status} in the spreadsheet";
                         }
                     }
                 }
-                return $"Sorry, could not mark {message.Author.Username} as HERE as they were not found in the spreadsheet for this event.";
+                return $"Sorry, could not mark {message.Author.Username} as {status} as they were not found in the spreadsheet for this event.";
             }
             catch (Exception exc)
             {

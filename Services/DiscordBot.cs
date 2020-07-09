@@ -180,6 +180,10 @@ namespace DiceMastersDiscordBot.Services
             {
                 await message.Channel.SendMessageAsync(_sheetService.MarkPlayerHere(message));
             }
+            else if (message.Content.ToLower().StartsWith(".drop") || message.Content.ToLower().StartsWith("!drop"))
+            {
+                await message.Channel.SendMessageAsync(_sheetService.MarkPlayerDropped(message));
+            }
             else if (message.Content.ToLower().StartsWith(".help") || message.Content.ToLower().StartsWith("!help"))
             {
                 await message.Channel.SendMessageAsync(Refs.DMBotCommandHelpString);
