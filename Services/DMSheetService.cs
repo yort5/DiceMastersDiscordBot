@@ -155,33 +155,7 @@ namespace DiceMastersDiscordBot.Services
 
         internal string GetCurrentPlayerCount(SocketMessage message)
         {
-            var sheetsService = AuthorizeGoogleSheets();
-            HomeSheet homesheet = GetHomeSheet(message.Channel.Name);
-            int nameIndex = 1;
-            try
-            {
-                // Define request parameters.
-                var range = $"{homesheet.SheetName}!A:D";
-
-                // load the data
-                var sheetRequest = sheetsService.Spreadsheets.Values.Get(homesheet.SheetId, range);
-                var sheetResponse = sheetRequest.Execute();
-                var values = sheetResponse.Values;
-                StringBuilder currentPlaylerList = new StringBuilder();
-                currentPlaylerList.AppendLine($"There are currently {values.Count - 1} humans registered:");
-                //for (int i = 1; i < values.Count; i++)
-                //{
-                //    string name = values[i][nameIndex].ToString();
-                //    currentPlaylerList.AppendLine(name);
-                //}
-                return currentPlaylerList.ToString();
-            }
-            catch (Exception exc)
-            {
-                Console.WriteLine(exc.Message);
-                return "Sorry, wasn't able to determine player count";
-            }
-
+            return GetCurrentPlayerList(message, true);
         }
 
         internal string MarkPlayerHere(SocketMessage message)
@@ -247,7 +221,7 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
-        internal string GetCurrentPlayerList(SocketMessage message)
+        internal string GetCurrentPlayerList(SocketMessage message, bool returnCountOnly = false)
         {
             var sheetsService = AuthorizeGoogleSheets();
             HomeSheet homesheet = GetHomeSheet(message.Channel.Name);
@@ -261,14 +235,27 @@ namespace DiceMastersDiscordBot.Services
                 var sheetRequest = sheetsService.Spreadsheets.Values.Get(homesheet.SheetId, range);
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
-                StringBuilder currentPlaylerList = new StringBuilder();
-                currentPlaylerList.AppendLine($"There are currently {values.Count - 1} humans registered (and no robots):");
+                StringBuilder currentPlayerList = new StringBuilder();
+                int currentPlayerCount = 0;
+
                 for (int i = 1; i < values.Count; i++)
                 {
-                    string name = values[i][nameIndex].ToString();
-                    currentPlaylerList.AppendLine(name);
+                    if (!values[i][0].ToString().ToUpper().Equals("DROPPED"))
+                    {
+                        string name = values[i][nameIndex].ToString();
+                        currentPlayerList.AppendLine(name);
+                        currentPlayerCount++;
+                    }
                 }
-                return currentPlaylerList.ToString();
+
+                if (returnCountOnly)
+                {
+                    return $"There are currently {currentPlayerCount} humans registered (and no robots)";
+                }
+                else
+                {
+                    return $"There are currently {currentPlayerCount} humans registered (and no robots):{Environment.NewLine}{currentPlayerList}"; 
+                }
             }
             catch (Exception exc)
             {
