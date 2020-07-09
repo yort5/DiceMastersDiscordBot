@@ -198,27 +198,31 @@ namespace DiceMastersDiscordBot.Services
                 ColumnInput columnInput = null;
                 foreach (var record in existingRecords.Values)
                 {
-                    if (record.Contains(userName))
+                    foreach (var cell in record)
                     {
-                        var index = existingRecords.Values.IndexOf(record);
-                        range = $"{sheet.SheetName}!A{index + 1}";
+                        if (cell.ToString().ToLower().Trim().Equals(userName.ToLower().Trim()))
+                        {
 
-                        columnInput = new ColumnInput();
-                        columnInput.Column1Value = "HERE";
-                        columnInput.Column2Value = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty; ;
-                        columnInput.Column3Value = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty; ;
-                        columnInput.Column4Value = (record.Count >= 4 && record[3] != null) ? record[3].ToString() : string.Empty; ;
- 
-                        var oblist = new List<object>()
+                            var index = existingRecords.Values.IndexOf(record);
+                            range = $"{sheet.SheetName}!A{index + 1}";
+
+                            columnInput = new ColumnInput();
+                            columnInput.Column1Value = "HERE";
+                            columnInput.Column2Value = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty; ;
+                            columnInput.Column3Value = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty; ;
+                            columnInput.Column4Value = (record.Count >= 4 && record[3] != null) ? record[3].ToString() : string.Empty; ;
+
+                            var oblist = new List<object>()
                             { columnInput.Column1Value, columnInput.Column2Value, columnInput.Column3Value, columnInput.Column4Value};
-                        var valueRange = new ValueRange();
-                        valueRange.Values = new List<IList<object>> { oblist };
+                            var valueRange = new ValueRange();
+                            valueRange.Values = new List<IList<object>> { oblist };
 
-                        // Performing Update Operation...
-                        var updateRequest = sheetService.Spreadsheets.Values.Update(valueRange, sheet.SheetId, range);
-                        updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
-                        var appendReponse = updateRequest.Execute();
-                        return $"Player {message.Author.Username} marked as here in the spreadsheet";
+                            // Performing Update Operation...
+                            var updateRequest = sheetService.Spreadsheets.Values.Update(valueRange, sheet.SheetId, range);
+                            updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                            var appendReponse = updateRequest.Execute();
+                            return $"Player {message.Author.Username} marked as here in the spreadsheet";
+                        }
                     }
                 }
                 return $"Sorry, could not mark {message.Author.Username} as HERE as they were not found in the spreadsheet for this event.";
