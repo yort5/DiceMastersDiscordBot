@@ -19,6 +19,7 @@ namespace DiceMastersDiscordBot.Services
 
         private readonly string _WDASheetId;
         private readonly string _DiceFightSheetId;
+        private readonly string _OneOffSheetId;
         private readonly string _TotMSheetId;
         private readonly string _CRGRM1SSheetId;
         private readonly string _CRGRTTTDSheetId;
@@ -33,6 +34,7 @@ namespace DiceMastersDiscordBot.Services
             _TotMSheetId = config["TeamOfTheMonthSheetId"];
             _CRGRM1SSheetId = config["CRGRMonthlyOneShotSheetId"];
             _CRGRTTTDSheetId = config["CRGRTwoTeamTakeDownSheetId"];
+            _OneOffSheetId = config["OneOffSheetId"];
         }
         public void CheckSheets()
         {
@@ -45,6 +47,8 @@ namespace DiceMastersDiscordBot.Services
         public string TotMSheetId { get { return _TotMSheetId; } }
         public string CRGRM1SSheetId { get { return _CRGRM1SSheetId; } }
         public string CRGRTTTDSheetId { get { return _CRGRTTTDSheetId; } }
+        public string OneOffSheetId { get { return _OneOffSheetId; } }
+
 
         public SheetsService AuthorizeGoogleSheets()
         {
@@ -280,6 +284,11 @@ namespace DiceMastersDiscordBot.Services
             {
                 sheetId = DiceFightSheetId;
                 sheetName = Refs.DiceFightSheetName;
+            }
+            else if (channelName == Refs.EVENT_ONEOFF)
+            {
+                sheetId = OneOffSheetId;
+                sheetName = Refs.EVENT_ONEOFF;
             }
             else if (channelName == "team-of-the-month")
             {

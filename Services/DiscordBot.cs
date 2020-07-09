@@ -108,6 +108,11 @@ namespace DiceMastersDiscordBot.Services
                             case "TEAM-OF-THE-MONTH":
                                 eventName = Refs.EVENT_TOTM;
                                 break;
+                            case "DICE-FIGHT-XL":
+                            case "XL":
+                            case "DICEFIGHTXL":
+                                eventName = Refs.EVENT_ONEOFF;
+                                break;
                             default:
                                 break;
                         }
@@ -146,6 +151,7 @@ namespace DiceMastersDiscordBot.Services
                 {
                     await message.Channel.SendMessageAsync("Sorry, I don't understand that command. I'm not actually that smart, you know.");
                 }
+                return;
             }
             if (message.Content == "!ping")
             {
@@ -233,8 +239,23 @@ namespace DiceMastersDiscordBot.Services
                     Column4Value = winName
                 };
                 response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.DiceFightSheetId, homeSheet.SheetName, input);
-                //SendDiceFightLinkToGoogle(sheetsService, message);
                 if(string.IsNullOrWhiteSpace(winName))
+                {
+                    message.Author.SendMessageAsync(Refs.DiceFightAskForWin);
+                }
+            }
+            else if (eventName == Refs.EVENT_ONEOFF)
+            {
+                string winName = _sheetService.GetWINName(sheetsService, _sheetService.OneOffSheetId, message.Author.Username);
+                input = new ColumnInput()
+                {
+                    Column1Value = DateTime.Now.ToString(),
+                    Column2Value = message.Author.Username,
+                    Column3Value = teamlink,
+                    Column4Value = winName
+                };
+                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.OneOffSheetId, homeSheet.SheetName, input);
+                if (string.IsNullOrWhiteSpace(winName))
                 {
                     message.Author.SendMessageAsync(Refs.DiceFightAskForWin);
                 }

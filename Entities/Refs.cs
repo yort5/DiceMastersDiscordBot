@@ -12,6 +12,7 @@ namespace DiceMastersDiscordBot.Entities
         internal const string EVENT_WDA = "weekly-dice-arena";
         internal const string EVENT_DICE_FIGHT = "dice-fight";
         internal const string EVENT_TOTM = "team-of-the-month";
+        internal const string EVENT_ONEOFF = "dice-fight-xl";
         internal const string EVENT_CRGR_M1S = "monthly-one-shot";
         internal const string EVENT_CRGR_TTTD = "two-team-take-down";
 
@@ -101,7 +102,7 @@ namespace DiceMastersDiscordBot.Entities
                 helpString.Append($"{nl}    .list - lists the current people signed up for the event.");
                 helpString.Append($"{nl}VIA DIRECT MESSAGE - you can also send the {BOT_NAME} a direct message");
                 helpString.Append($"{nl}    .submit <event> <teambuilder link> - current supported events are wda (Weekly Dice Arena), df (Dice Fight), totm (Team of the Month), m1s (CRGR - Monthly One Shot, and tttd(CRGR - Two Team Take Down)");
-                helpString.Append($"{nl}Example: .submit wda http://tb.dicecoalition.com/blahblah");
+                helpString.Append($"{nl}Example: `.submit wda http://tb.dicecoalition.com/blahblah`");
                 helpString.Append($"{nl}If you have any problems or just general feedback, please DM Yort.");
                 return helpString.ToString();
             }
