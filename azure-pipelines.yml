@@ -42,11 +42,10 @@ steps:
 - task: AzureRmWebAppDeployment@4
   inputs:
     ConnectionType: 'AzureRM'
-    azureSubscription: 'Visual Studio Enterprise(a42da27c-dc48-4347-a7af-02afda3255cd)'
-    appType: 'webApp'
+    azureSubscription: 'Visual Studio Enterprise Subscription – MPN(2)(a42da27c-dc48-4347-a7af-02afda3255cd)'
+    appType: 'webAppLinux'
     WebAppName: 'DiceMastersDiscordBot'
     packageForLinux: '$(Build.ArtifactStagingDirectory)\WebJob'
-
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
