@@ -44,7 +44,7 @@ steps:
     ConnectionType: 'AzureRM'
     azureSubscription: 'DiceMastersBot - Azure'
     appType: 'webAppLinux'
-    WebAppName: 'DiceMastersDiscordBot'
+    WebAppName: 'DiceMastersBot'
     packageForLinux: '$(Build.ArtifactStagingDirectory)\WebJob'
 - task: PublishBuildArtifacts@1
   inputs:
