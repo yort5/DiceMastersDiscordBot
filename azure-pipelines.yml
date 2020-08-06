@@ -30,7 +30,7 @@ steps:
   inputs:
     command: 'publish'
     projects: '**/*.csproj'
-    arguments: '--output $(Build.ArtifactStagingDirectory)\WebJob\App_Data\jobs\continuous\MyWebJob'
+    arguments: '--output $(Build.ArtifactStagingDirectory)\App_Data\jobs\continuous\MyWebJob'
     zipAfterPublish: false
     modifyOutputPath: false
 
@@ -45,7 +45,7 @@ steps:
     azureSubscription: 'DiceMastersBot - Azure'
     appType: 'webAppLinux'
     WebAppName: 'DiceMastersBot'
-    packageForLinux: '$(Build.ArtifactStagingDirectory)\WebJob'
+    packageForLinux: '$(Build.ArtifactStagingDirectory)\'
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
