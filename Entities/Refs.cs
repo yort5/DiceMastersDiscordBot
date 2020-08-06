@@ -12,10 +12,11 @@ namespace DiceMastersDiscordBot.Entities
         internal const string EVENT_WDA = "weekly-dice-arena";
         internal const string EVENT_DICE_FIGHT = "dice-fight";
         internal const string EVENT_TOTM = "team-of-the-month";
-        internal const string EVENT_ONEOFF = "dice-fight-xl";
+        internal const string EVENT_ONEOFF = "modpdm-online-ukge";
         internal const string EVENT_CRGR_M1S = "monthly-one-shot";
         internal const string EVENT_CRGR_TTTD = "two-team-take-down";
 
+        internal const string COL_SPAN = "A:E";
         #region Private Properties
         internal static string WdaSheetName
         {
