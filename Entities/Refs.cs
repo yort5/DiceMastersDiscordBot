@@ -16,6 +16,7 @@ namespace DiceMastersDiscordBot.Entities
         internal const string EVENT_CRGR_M1S = "monthly-one-shot";
         internal const string EVENT_CRGR_TTTD = "two-team-take-down";
 
+        internal const string COL_SPAN = "A:E";
         #region Private Properties
         internal static string WdaSheetName
         {

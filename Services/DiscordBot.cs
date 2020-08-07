@@ -184,6 +184,10 @@ namespace DiceMastersDiscordBot.Services
             {
                 await message.Channel.SendMessageAsync(_sheetService.MarkPlayerDropped(message));
             }
+            else if (message.Content.ToLower().StartsWith(".teams"))
+            {
+                await message.Channel.SendMessageAsync(_sheetService.ListTeams(message));
+            }
             else if (message.Content.ToLower().StartsWith(".help") || message.Content.ToLower().StartsWith("!help"))
             {
                 await message.Channel.SendMessageAsync(Refs.DMBotCommandHelpString);
@@ -222,6 +226,7 @@ namespace DiceMastersDiscordBot.Services
             ColumnInput input;
             string response = Refs.DMBotSubmitTeamHint;
             HomeSheet homeSheet = _sheetService.GetHomeSheet(eventName);
+            if (homeSheet == null) return response;
             if (eventName == "weekly-dice-arena")
             {
                 input = new ColumnInput()

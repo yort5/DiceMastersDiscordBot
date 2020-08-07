@@ -13,5 +13,6 @@ namespace DiceMastersDiscordBot.Entities
         public string SheetName;
         public string FormatDescription;
         public string Info;
+        public List<string> AuthorizedUsers = new List<string>();
     }
 }
