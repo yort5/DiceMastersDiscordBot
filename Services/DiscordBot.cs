@@ -108,9 +108,9 @@ namespace DiceMastersDiscordBot.Services
                             case "TEAM-OF-THE-MONTH":
                                 eventName = Refs.EVENT_TOTM;
                                 break;
-                            case "DICE-FIGHT-XL":
-                            case "XL":
-                            case "DICEFIGHTXL":
+                            case "MODPDM":
+                            case "MODPDM-ONLINE-UKGE":
+                            case "UKGE":
                                 eventName = Refs.EVENT_ONEOFF;
                                 break;
                             default:
@@ -250,19 +250,18 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (eventName == Refs.EVENT_ONEOFF)
             {
-                string winName = _sheetService.GetWINName(sheetsService, _sheetService.OneOffSheetId, message.Author.Username);
+                //string winName = _sheetService.GetWINName(sheetsService, _sheetService.OneOffSheetId, message.Author.Username);
                 input = new ColumnInput()
                 {
                     Column1Value = DateTime.Now.ToString(),
                     Column2Value = message.Author.Username,
-                    Column3Value = teamlink,
-                    Column4Value = winName
+                    Column3Value = teamlink
                 };
                 response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.OneOffSheetId, homeSheet.SheetName, input);
-                if (string.IsNullOrWhiteSpace(winName))
-                {
-                    message.Author.SendMessageAsync(Refs.DiceFightAskForWin);
-                }
+                //if (string.IsNullOrWhiteSpace(winName))
+                //{
+                //    message.Author.SendMessageAsync(Refs.DiceFightAskForWin);
+                //}
             }
             else if(eventName == "team-of-the-month")
             {
