@@ -259,13 +259,13 @@ namespace DiceMastersDiscordBot.Services
 
                 for (int i = 1; i < values.Count; i++)
                 {
-                    if (values[i][0].ToString().ToUpper().Equals("HERE"))
-                    {
+                    //if (values[i][0].ToString().ToUpper().Equals("HERE"))
+                    //{
                         string name = values[i][nameIndex].ToString();
                         string team = values[i][teamIndex].ToString();
                         teamList.AppendLine(name);
                         teamList.AppendLine(team);
-                    }
+                    //}
                 }
 
                 return $"Here are the team links for players currently marked HERE:{Environment.NewLine}{teamList}";
