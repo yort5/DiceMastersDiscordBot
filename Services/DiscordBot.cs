@@ -162,7 +162,7 @@ namespace DiceMastersDiscordBot.Services
             else if (message.Content.ToLower().StartsWith(SUBMIT_STRING) || message.Content.ToLower().StartsWith(".submit"))
             {
                 // first delete the original message
-                //await message.Channel.DeleteMessageAsync(message);
+                await message.Channel.DeleteMessageAsync(message);
                 var teamlink = message.Content.TrimStart(SUBMIT_STRING.ToCharArray()).TrimStart(".submit".ToCharArray()).Trim();
                 await message.Channel.SendMessageAsync(SubmitTeamLink(message.Channel.Name, teamlink, message));
             }
