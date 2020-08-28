@@ -1,8 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using DiceMastersDiscordBot.Services;
+using DiceMastersDiscordBot.Entities;
 using Microsoft.Extensions.Configuration;
 
 namespace DiceMastersDiscordBot
@@ -22,12 +25,17 @@ namespace DiceMastersDiscordBot
                 {
                     var settings = config.Build();
                     config.AddAzureAppConfiguration(settings["AzureAppConfigurationEndpoint"]);
+                    //config.AddAzureAppConfiguration("");
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddSingleton<DMSheetService>();
                     services.AddHostedService<DiscordBot>();
-                    //services.AddHostedService<ServiceB>();
+                    services.AddHttpClient<ChallongeEvent>(c =>
+                    {
+                        c.BaseAddress = new Uri("https://api.challonge.com");
+                    });
+                    //services.AddHostedService<TwitchBot>();
                 })
                 // Only required if the service responds to requests.
                 .ConfigureWebHostDefaults(webBuilder =>

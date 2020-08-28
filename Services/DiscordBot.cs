@@ -23,7 +23,8 @@ namespace DiceMastersDiscordBot.Services
     public class DiscordBot : BackgroundService
     {
         private DiscordSocketClient _client;
-        private CommandService _commands;
+        private ChallongeEvent _challonge;
+        //private CommandService _commands;
 
 
         private readonly DMSheetService _sheetService;
@@ -31,11 +32,12 @@ namespace DiceMastersDiscordBot.Services
         private const string SUBMIT_STRING = "!submit";
 
 
-        public DiscordBot(ILoggerFactory loggerFactory, IConfiguration config, DMSheetService dMSheetService)
+        public DiscordBot(ILoggerFactory loggerFactory, IConfiguration config, DMSheetService dMSheetService, ChallongeEvent challonge)
         {
             Logger = loggerFactory.CreateLogger<DiscordBot>();
             Config = config;
             _sheetService = dMSheetService;
+            _challonge = challonge;
         }
 
         public ILogger Logger { get; }
@@ -108,9 +110,9 @@ namespace DiceMastersDiscordBot.Services
                             case "TEAM-OF-THE-MONTH":
                                 eventName = Refs.EVENT_TOTM;
                                 break;
-                            case "MODPDM":
-                            case "MODPDM-ONLINE-UKGE":
-                            case "UKGE":
+                            case "RFTN":
+                            case "ROLL-FOR-THE-NORTH":
+                            case "CANNATS":
                                 eventName = Refs.EVENT_ONEOFF;
                                 break;
                             default:
@@ -160,7 +162,7 @@ namespace DiceMastersDiscordBot.Services
             else if (message.Content.ToLower().StartsWith(SUBMIT_STRING) || message.Content.ToLower().StartsWith(".submit"))
             {
                 // first delete the original message
-                await message.Channel.DeleteMessageAsync(message);
+                //await message.Channel.DeleteMessageAsync(message);
                 var teamlink = message.Content.TrimStart(SUBMIT_STRING.ToCharArray()).TrimStart(".submit".ToCharArray()).Trim();
                 await message.Channel.SendMessageAsync(SubmitTeamLink(message.Channel.Name, teamlink, message));
             }
@@ -194,7 +196,8 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.StartsWith("!test"))
             {
-                await message.Author.SendMessageAsync("Test response");
+                var participants = await _challonge.GetAllParticipantsAsync("3a5g0n90");
+                Logger.LogDebug($"{participants.Count}");
             }
         }
 

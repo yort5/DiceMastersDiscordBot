@@ -27,6 +27,7 @@ namespace DiceMastersDiscordBot.Services
         private readonly string _TotMSheetId;
         private readonly string _CRGRM1SSheetId;
         private readonly string _CRGRTTTDSheetId;
+        private readonly string _MasterSheetId;
 
         public DMSheetService(ILoggerFactory loggerFactory, IConfiguration config)
         {
@@ -39,6 +40,7 @@ namespace DiceMastersDiscordBot.Services
             _CRGRM1SSheetId = config["CRGRMonthlyOneShotSheetId"];
             _CRGRTTTDSheetId = config["CRGRTwoTeamTakeDownSheetId"];
             _OneOffSheetId = config["OneOffSheetId"];
+            _MasterSheetId = config["MasterSheetId"];
         }
         public void CheckSheets()
         {
@@ -239,7 +241,7 @@ namespace DiceMastersDiscordBot.Services
             {
                 var sheetService = AuthorizeGoogleSheets();
                 var sheet = GetHomeSheet(message.Channel.Name);
-                if (sheet == null) return "No information foudn for this event";
+                if (sheet == null) return "No information found for this event";
                 if (sheet.AuthorizedUsers.Count == 0) return "No users are authorized for this action";
                 // Define request parameters.
                 var userName = message.Author.Username;
@@ -278,6 +280,50 @@ namespace DiceMastersDiscordBot.Services
 
         }
 
+        internal string ListTeams(string channelName, string userName)
+        {
+            try
+            {
+                var sheetService = AuthorizeGoogleSheets();
+                var sheet = GetHomeSheet(channelName);
+                if (sheet == null) return "No information found for this event";
+                if (sheet.AuthorizedUsers.Count == 0) return "No users are authorized for this action";
+                // Define request parameters
+
+                if (!sheet.AuthorizedUsers.Contains(userName)) return "You are not authorized to do this action";
+
+                // Define request parameters.
+                var range = $"{sheet.SheetName}!{Refs.COL_SPAN}";
+
+                // load the data
+                var sheetRequest = sheetService.Spreadsheets.Values.Get(sheet.SheetId, range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+                StringBuilder teamList = new StringBuilder();
+                int nameIndex = 1;
+                int teamIndex = 2;
+
+                for (int i = 1; i < values.Count; i++)
+                {
+                    //if (values[i][0].ToString().ToUpper().Equals("HERE"))
+                    //{
+                    string name = values[i][nameIndex].ToString();
+                    string team = values[i][teamIndex].ToString();
+                    teamList.AppendLine(name);
+                    teamList.AppendLine(team);
+                    //}
+                }
+
+                return $"Here are the team links for players currently marked HERE:{Environment.NewLine}{teamList}";
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+                return "There was an error trying to add your info";
+            }
+
+        }
+
         internal string SearchForCard(string cardId)
         {
             return "Not quite working yet";
@@ -301,8 +347,8 @@ namespace DiceMastersDiscordBot.Services
                 int currentPlayerCount = 0;
 
                 for (int i = 1; i < values.Count; i++)
-                {
-                    if (!values[i][0].ToString().ToUpper().Equals("DROPPED"))
+                { 
+                    if (values[i].Count > 0 && !values[i][0].ToString().ToUpper().Equals("DROPPED"))
                     {
                         string name = values[i][nameIndex].ToString();
                         currentPlayerList.AppendLine(name);
@@ -403,6 +449,7 @@ namespace DiceMastersDiscordBot.Services
             }
             catch (Exception exc)
             {
+                _logger.LogError($"Exception getting HomeSheet: {exc.Message}");
                 return null;
             }
             return null;

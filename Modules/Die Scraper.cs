@@ -14,7 +14,7 @@ namespace DiceBot.modules.Public
     public class Die_Scraper : ModuleBase
     {
         GoogleTest go = new GoogleTest();
-        static string url;
+        //static string url;
         static string CRarity;
         static string CUrl;
         static string CName;
