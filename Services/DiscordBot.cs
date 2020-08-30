@@ -136,18 +136,43 @@ namespace DiceMastersDiscordBot.Services
                         var sheetsService = _sheetService.AuthorizeGoogleSheets();
                         string[] args = message.Content.Split(" ");
                         UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, WINName = args[1].ToString() };
-                        _sheetService.SendUserInfoToGoogle(userInfo);
-                        // record it in the spreadsheet
-                        //await message.Channel.SendMessageAsync(
-                        //    _sheetService.SendLinkToGoogle(sheetsService, message, _settings.GetMasterSheetId(), "WINSheet", userInfo));
-                        //await message.Channel.SendMessageAsync("Also, I hope to do this automatically soon, but I am already up to late, so would you mind terribly re-submitting your team so your WIN name gets recorded properly? Thanks, I reaZZZZZZZZZ");
-                        // update current DiceFight sheet?
+                        await message.Channel.SendMessageAsync(_sheetService.SendUserInfoToGoogle(userInfo));
 
                     }
                     catch (Exception exc)
                     {
                         Console.WriteLine($"Exception in UpdateWinName: {exc.Message}");
                         await message.Channel.SendMessageAsync("Sorry, I was unable to record your WIN Name. Please contact Yort and tell him what went wrong");
+                    }
+                }
+                else if (message.Content.ToLower().StartsWith("!challonge") || message.Content.ToLower().StartsWith(".challonge"))
+                {
+                    try
+                    {
+                        var sheetsService = _sheetService.AuthorizeGoogleSheets();
+                        string[] args = message.Content.Split(" ");
+                        UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, ChallongeName = args[1].ToString() };
+                        await message.Channel.SendMessageAsync(_sheetService.SendUserInfoToGoogle(userInfo));
+                    }
+                    catch (Exception exc)
+                    {
+                        Console.WriteLine($"Exception in UpdateWinName: {exc.Message}");
+                        await message.Channel.SendMessageAsync("Sorry, I was unable to record your Challonge Name. Please contact Yort and tell him what went wrong");
+                    }
+                }
+                else if (message.Content.ToLower().StartsWith("!twitch") || message.Content.ToLower().StartsWith(".twitch"))
+                {
+                    try
+                    {
+                        var sheetsService = _sheetService.AuthorizeGoogleSheets();
+                        string[] args = message.Content.Split(" ");
+                        UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, TwitchName = args[1].ToString() };
+                        await message.Channel.SendMessageAsync(_sheetService.SendUserInfoToGoogle(userInfo));
+                    }
+                    catch (Exception exc)
+                    {
+                        Console.WriteLine($"Exception in UpdateWinName: {exc.Message}");
+                        await message.Channel.SendMessageAsync("Sorry, I was unable to record your Twitch Name. Please contact Yort and tell him what went wrong");
                     }
                 }
                 else
@@ -163,9 +188,7 @@ namespace DiceMastersDiscordBot.Services
             else if (message.Content.ToLower().StartsWith(SUBMIT_STRING) || message.Content.ToLower().StartsWith(".submit"))
             {
                 // first delete the original message
-#if DEBUG
                 await message.Channel.DeleteMessageAsync(message);
-#endif
                 var teamlink = message.Content.TrimStart(SUBMIT_STRING.ToCharArray()).TrimStart(".submit".ToCharArray()).Trim();
                 await message.Channel.SendMessageAsync(SubmitTeamLink(message.Channel.Name, teamlink, message));
             }
@@ -217,6 +240,10 @@ namespace DiceMastersDiscordBot.Services
             {
                 //await message.Channel.SendMessageAsync(_sheetService.ListTeams(message));
             }
+            else if (message.Content.ToLower().StartsWith(".register"))
+            {
+                RegisterForChallonge(message);
+            }
             else if (message.Content.ToLower().StartsWith(".help") || message.Content.ToLower().StartsWith("!help"))
             {
                 await message.Channel.SendMessageAsync(_settings.GetBotHelpString());
@@ -228,7 +255,19 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
-
+        private void RegisterForChallonge(SocketMessage message)
+        {
+            // first check if we have mapped Challonge info
+            var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
+            if(string.IsNullOrEmpty(userInfo.ChallongeName))
+            {
+                message.Author.SendMessageAsync("Please submit your Challonge username info by typing\n `.challonge mychallongeusername`");
+            }
+            else
+            {
+                message.Author.SendMessageAsync("This is in progress");
+            }
+        }
 
         private string GetCurrentFormat(SocketMessage message)
         {
@@ -250,7 +289,7 @@ namespace DiceMastersDiscordBot.Services
                 }
         }
 
-         private string SubmitTeamLink(string eventName, string teamlink, SocketMessage message)
+        private string SubmitTeamLink(string eventName, string teamlink, SocketMessage message)
         {
             var sheetsService = _sheetService.AuthorizeGoogleSheets();
             EventUserInput eventUserInput = new EventUserInput();

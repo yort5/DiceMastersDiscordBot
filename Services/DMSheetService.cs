@@ -366,7 +366,31 @@ namespace DiceMastersDiscordBot.Services
             return null;
         }
 
-        internal UserInfo GetUserInfo(SheetsService sheetsService, string name, int nameIndex)
+        internal UserInfo GetUserInfoFromDiscord(string username)
+        {
+            var sheetService = AuthorizeGoogleSheets();
+            return GetUserInfo(sheetService, username, 0);
+        }
+
+        internal UserInfo GetUserInfoFromWIN(string username)
+        {
+            var sheetService = AuthorizeGoogleSheets();
+            return GetUserInfo(sheetService, username, 1);
+        }
+
+        internal UserInfo GetUserInfoFromChallonge(string username)
+        {
+            var sheetService = AuthorizeGoogleSheets();
+            return GetUserInfo(sheetService, username, 2);
+        }
+
+        internal UserInfo GetUserInfoFromTwitch(string username)
+        {
+            var sheetService = AuthorizeGoogleSheets();
+            return GetUserInfo(sheetService, username, 3);
+        }
+
+        private UserInfo GetUserInfo(SheetsService sheetsService, string name, int nameIndex)
         {
             var range = $"{MasterUserSheetName}!A:D";
             var sheetRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
