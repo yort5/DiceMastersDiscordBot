@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DiceMastersDiscordBot.Entities
 {
-    public class Refs
+    public class OldRefs
     {
         internal const string BOT_NAME = "Dice Masters Bot";
         internal const string EVENT_WDA = "weekly-dice-arena";

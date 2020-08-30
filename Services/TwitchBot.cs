@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using DiceMastersDiscordBot.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -90,7 +91,10 @@ namespace DiceMastersDiscordBot.Services
             if (e.ChatMessage.Message.Contains("BadRolls"))
                 twitchClient.SendMessage(e.ChatMessage.Channel, "Did I hear someone say BadRolls?");
             if (e.ChatMessage.Message.StartsWith("!teams"))
-                twitchClient.SendMessage(e.ChatMessage.Channel, _sheetService.ListTeams(e.ChatMessage.Channel, e.ChatMessage.Username));
+            {
+                EventUserInput eventUserInput = new EventUserInput();
+                twitchClient.SendMessage(e.ChatMessage.Channel, "This doesn't work yet.");
+            }
         }
 
         private void Client_OnWhisperReceived(object sender, OnWhisperReceivedArgs e)

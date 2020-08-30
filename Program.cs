@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using DiceMastersDiscordBot.Services;
 using DiceMastersDiscordBot.Entities;
 using Microsoft.Extensions.Configuration;
+using DiceMastersDiscordBot.Properties;
 
 namespace DiceMastersDiscordBot
 {
@@ -25,7 +26,6 @@ namespace DiceMastersDiscordBot
                 {
                     var settings = config.Build();
                     config.AddAzureAppConfiguration(settings["AzureAppConfigurationEndpoint"]);
-                    //config.AddAzureAppConfiguration("");
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
@@ -35,6 +35,7 @@ namespace DiceMastersDiscordBot
                     {
                         c.BaseAddress = new Uri("https://api.challonge.com");
                     });
+                    services.AddSingleton<IAppSettings, AppSettings>();
                     //services.AddHostedService<TwitchBot>();
                 })
                 // Only required if the service responds to requests.

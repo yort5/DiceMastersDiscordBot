@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DiceMastersDiscordBot.Entities;
+using DiceMastersDiscordBot.Properties;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -22,6 +23,8 @@ namespace DiceMastersDiscordBot.Services
 {
     public class DiscordBot : BackgroundService
     {
+        private readonly ILogger _logger;
+        private readonly IAppSettings _settings;
         private DiscordSocketClient _client;
         private ChallongeEvent _challonge;
         //private CommandService _commands;
@@ -31,23 +34,24 @@ namespace DiceMastersDiscordBot.Services
 
         private const string SUBMIT_STRING = "!submit";
 
-
-        public DiscordBot(ILoggerFactory loggerFactory, IConfiguration config, DMSheetService dMSheetService, ChallongeEvent challonge)
+        
+        public DiscordBot(ILoggerFactory loggerFactory,
+                            IAppSettings appSettings,
+                            DMSheetService dMSheetService,
+                            ChallongeEvent challonge)
         {
-            Logger = loggerFactory.CreateLogger<DiscordBot>();
-            Config = config;
+            _logger = loggerFactory.CreateLogger<DiscordBot>();
+            _settings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
             _sheetService = dMSheetService;
             _challonge = challonge;
         }
 
-        public ILogger Logger { get; }
-        public IConfiguration Config { get; }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            Logger.LogInformation("ServiceA is starting.");
+            _logger.LogInformation("DiscordBot Service is starting.");
 
-            stoppingToken.Register(() => Logger.LogInformation("ServiceA is stopping."));
+            stoppingToken.Register(() => _logger.LogInformation("DiscordBot Service is stopping."));
 
             try
             {
@@ -60,7 +64,7 @@ namespace DiceMastersDiscordBot.Services
                 //await InstallCommands();      
 
                 // Connect the bot to Discord
-                string token = Config["DiscordToken"];
+                string token = _settings.GetDiscordToken();
                 await _client.LoginAsync(TokenType.Bot, token);
                 await _client.StartAsync();
 
@@ -69,7 +73,7 @@ namespace DiceMastersDiscordBot.Services
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    Logger.LogInformation("ServiceA is doing background work.");
+                    _logger.LogInformation("ServiceA is doing background work.");
 
                     _sheetService.CheckSheets();
 
@@ -77,10 +81,10 @@ namespace DiceMastersDiscordBot.Services
                 }
             } catch (Exception exc)
             {
-                Logger.LogError(exc.Message);
+                _logger.LogError(exc.Message);
             }
 
-            Logger.LogInformation("ServiceA has stopped.");
+            _logger.LogInformation("ServiceA has stopped.");
         }
 
         private async Task DiscordMessageReceived(SocketMessage message)
@@ -96,27 +100,23 @@ namespace DiceMastersDiscordBot.Services
                         var eventName = "undetermined";
                         var args = message.Content.Split(' ');
 
-                        switch (args[1].ToUpper())
+                        var inputCode = args[1].ToUpper();
+
+                        if(inputCode == "WDA" || inputCode == "WEEKLY-DICE-ARENA")
                         {
-                            case "WDA":
-                            case "WEEKLY-DICE-ARENA":
-                                eventName = Refs.EVENT_WDA;
-                                break;
-                            case "DF":
-                            case "DICE-FIGHT":
-                                eventName = Refs.EVENT_DICE_FIGHT;
-                                break;
-                            case "TOTM":
-                            case "TEAM-OF-THE-MONTH":
-                                eventName = Refs.EVENT_TOTM;
-                                break;
-                            case "RFTN":
-                            case "ROLL-FOR-THE-NORTH":
-                            case "CANNATS":
-                                eventName = Refs.EVENT_ONEOFF;
-                                break;
-                            default:
-                                break;
+                            eventName = _settings.GetWDAChannelName();
+                        }
+                        else if(inputCode == "DF" || inputCode == "DICE-FIGHT")
+                        {
+                            eventName = _settings.GetDiceFightChannelName();
+                        }
+                        else if(inputCode == "TOTM" || inputCode == "TEAM-OF-THE-MONTH")
+                        {
+                            eventName = _settings.GetTotMChannelName();
+                        }
+                        else if(inputCode == _settings.GetOneOffCode())
+                        {
+                            eventName = _settings.GetOneOffChannelName();
                         }
 
                         await message.Channel.SendMessageAsync(SubmitTeamLink(eventName, args[2], message));
@@ -125,7 +125,7 @@ namespace DiceMastersDiscordBot.Services
                     {
                         Console.WriteLine($"Exception submitting team via DM: {exc.Message}");
                         await message.Channel.SendMessageAsync("Sorry, I was unable to determine which event you wanted to submit to.");
-                        await message.Channel.SendMessageAsync(Refs.DMBotSubmitTeamHint);
+                        await message.Channel.SendMessageAsync("Type `.help` for more information.");
                         await message.Channel.SendMessageAsync("If you think you're doing it right and it still doesn't work, message Yort or post in #bot-uprising");
                     }
                 }
@@ -135,11 +135,12 @@ namespace DiceMastersDiscordBot.Services
                     {
                         var sheetsService = _sheetService.AuthorizeGoogleSheets();
                         string[] args = message.Content.Split(" ");
-                        ColumnInput ci = new ColumnInput { Column1Value = message.Author.Username, Column2Value = args[1] };
+                        UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, WINName = args[1].ToString() };
+                        _sheetService.SendUserInfoToGoogle(userInfo);
                         // record it in the spreadsheet
-                        await message.Channel.SendMessageAsync(
-                            _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.DiceFightSheetId, "WINSheet", ci));
-                        await message.Channel.SendMessageAsync("Also, I hope to do this automatically soon, but I am already up to late, so would you mind terribly re-submitting your team so your WIN name gets recorded properly? Thanks, I reaZZZZZZZZZ");
+                        //await message.Channel.SendMessageAsync(
+                        //    _sheetService.SendLinkToGoogle(sheetsService, message, _settings.GetMasterSheetId(), "WINSheet", userInfo));
+                        //await message.Channel.SendMessageAsync("Also, I hope to do this automatically soon, but I am already up to late, so would you mind terribly re-submitting your team so your WIN name gets recorded properly? Thanks, I reaZZZZZZZZZ");
                         // update current DiceFight sheet?
 
                     }
@@ -162,7 +163,9 @@ namespace DiceMastersDiscordBot.Services
             else if (message.Content.ToLower().StartsWith(SUBMIT_STRING) || message.Content.ToLower().StartsWith(".submit"))
             {
                 // first delete the original message
+#if DEBUG
                 await message.Channel.DeleteMessageAsync(message);
+#endif
                 var teamlink = message.Content.TrimStart(SUBMIT_STRING.ToCharArray()).TrimStart(".submit".ToCharArray()).Trim();
                 await message.Channel.SendMessageAsync(SubmitTeamLink(message.Channel.Name, teamlink, message));
             }
@@ -172,32 +175,56 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".count") || message.Content.ToLower().StartsWith("!count"))
             {
-                await message.Channel.SendMessageAsync(_sheetService.GetCurrentPlayerCount(message));
+                var playerList = _sheetService.GetCurrentPlayerCount(message.Channel.Name);
+                await message.Channel.SendMessageAsync($"There are currently {playerList} humans registered (and no robots)");
             }
             else if (message.Content.ToLower().StartsWith(".list") || message.Content.ToLower().StartsWith("!list"))
             {
-                await message.Channel.SendMessageAsync(_sheetService.GetCurrentPlayerList(message));
+                var playerList = _sheetService.GetCurrentPlayerList(message.Channel.Name);
+                StringBuilder playerListString = new StringBuilder();
+                playerListString.AppendLine($"There are currently {playerList.Count} humans registered (and no robots):");
+                foreach(var player in playerList)
+                {
+                    playerListString.AppendLine(player.DiscordName);
+                }
+                await message.Channel.SendMessageAsync(playerListString.ToString()) ;
             }
             else if (message.Content.ToLower().StartsWith(".here") || message.Content.ToLower().StartsWith("!here"))
             {
-                await message.Channel.SendMessageAsync(_sheetService.MarkPlayerHere(message));
+                EventUserInput eventUserInput = new EventUserInput() { DiscordName = message.Author.Username, EventName = message.Channel.Name };
+                if(_sheetService.MarkPlayerHere(eventUserInput))
+                {
+                    await message.Channel.SendMessageAsync($"Player {eventUserInput.DiscordName} marked as HERE in the spreadsheet");
+                }
+                else
+                {
+                    await message.Channel.SendMessageAsync($"Sorry, could not mark {eventUserInput.DiscordName} as HERE as they were not found in the spreadsheet for this event.");
+                }
             }
             else if (message.Content.ToLower().StartsWith(".drop") || message.Content.ToLower().StartsWith("!drop"))
             {
-                await message.Channel.SendMessageAsync(_sheetService.MarkPlayerDropped(message));
+                EventUserInput eventUserInput = new EventUserInput() { DiscordName = message.Author.Username, EventName = message.Channel.Name };
+                if (_sheetService.MarkPlayerDropped(eventUserInput))
+                {
+                    await message.Channel.SendMessageAsync($"Player {eventUserInput.DiscordName} marked as DROPPED in the spreadsheet");
+                }
+                else
+                {
+                    await message.Channel.SendMessageAsync($"Sorry, could not mark {eventUserInput.DiscordName} as DROPPED as they were not found in the spreadsheet for this event.");
+                }
             }
             else if (message.Content.ToLower().StartsWith(".teams"))
             {
-                await message.Channel.SendMessageAsync(_sheetService.ListTeams(message));
+                //await message.Channel.SendMessageAsync(_sheetService.ListTeams(message));
             }
             else if (message.Content.ToLower().StartsWith(".help") || message.Content.ToLower().StartsWith("!help"))
             {
-                await message.Channel.SendMessageAsync(Refs.DMBotCommandHelpString);
+                await message.Channel.SendMessageAsync(_settings.GetBotHelpString());
             }
             else if (message.Content.StartsWith("!test"))
             {
                 var participants = await _challonge.GetAllParticipantsAsync("3a5g0n90");
-                Logger.LogDebug($"{participants.Count}");
+                _logger.LogDebug($"{participants.Count}");
             }
         }
 
@@ -206,7 +233,7 @@ namespace DiceMastersDiscordBot.Services
         private string GetCurrentFormat(SocketMessage message)
         {
             var homeSheet = _sheetService.GetHomeSheet(message.Channel.Name);
-            var sheetsService = _sheetService.AuthorizeGoogleSheets();
+            //var sheetsService = _sheetService.AuthorizeGoogleSheets();
 
                 try
                 {
@@ -226,80 +253,22 @@ namespace DiceMastersDiscordBot.Services
          private string SubmitTeamLink(string eventName, string teamlink, SocketMessage message)
         {
             var sheetsService = _sheetService.AuthorizeGoogleSheets();
-            ColumnInput input;
-            string response = Refs.DMBotSubmitTeamHint;
+            EventUserInput eventUserInput = new EventUserInput();
+            string response = string.Empty;
             HomeSheet homeSheet = _sheetService.GetHomeSheet(eventName);
-            if (homeSheet == null) return response;
-            if (eventName == "weekly-dice-arena")
+            if (homeSheet == null) return "Sorry, there was an error getting the event info to submit to";
+
+            eventUserInput.Here = DateTime.UtcNow.ToString();
+            eventUserInput.DiscordName = message.Author.Username;
+            eventUserInput.TeamLink = teamlink;
+
+            response = _sheetService.SendLinkToGoogle(sheetsService, homeSheet.SheetId, homeSheet.SheetName, eventUserInput);
+
+            if(string.IsNullOrEmpty(response))
             {
-                input = new ColumnInput()
-                {
-                    Column1Value = DateTime.Now.ToString(),
-                    Column2Value = message.Author.Username,
-                    Column3Value = teamlink
-                };
-                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.WDASheetId, homeSheet.SheetName, input);
+                return _settings.GetBotHelpString();
             }
-            else if (eventName == "dice-fight")
-            {
-                string winName = _sheetService.GetWINName(sheetsService, _sheetService.DiceFightSheetId, message.Author.Username);
-                input = new ColumnInput()
-                {
-                    Column1Value = DateTime.Now.ToString(),
-                    Column2Value = message.Author.Username,
-                    Column3Value = teamlink,
-                    Column4Value = winName
-                };
-                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.DiceFightSheetId, homeSheet.SheetName, input);
-                if(string.IsNullOrWhiteSpace(winName))
-                {
-                    message.Author.SendMessageAsync(Refs.DiceFightAskForWin);
-                }
-            }
-            else if (eventName == Refs.EVENT_ONEOFF)
-            {
-                //string winName = _sheetService.GetWINName(sheetsService, _sheetService.OneOffSheetId, message.Author.Username);
-                input = new ColumnInput()
-                {
-                    Column1Value = DateTime.Now.ToString(),
-                    Column2Value = message.Author.Username,
-                    Column3Value = teamlink
-                };
-                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.OneOffSheetId, homeSheet.SheetName, input);
-                //if (string.IsNullOrWhiteSpace(winName))
-                //{
-                //    message.Author.SendMessageAsync(Refs.DiceFightAskForWin);
-                //}
-            }
-            else if(eventName == "team-of-the-month")
-            {
-                input = new ColumnInput()
-                {
-                    Column1Value = DateTime.Now.ToString(),
-                    Column2Value = message.Author.Username,
-                    Column3Value = teamlink
-                };
-                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.TotMSheetId, homeSheet.SheetName, input);
-            }
-            else if(eventName == "monthly-one-shot")
-            {
-                input = new ColumnInput()
-                {
-                    Column1Value = message.Author.Username,
-                    Column2Value = teamlink
-                };
-                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.CRGRM1SSheetId, Refs.CRGRM1SSheetName, input);
-            }
-            else if(eventName == "TTTD")
-            {
-                input = new ColumnInput()
-                {
-                    Column1Value = message.Author.Username,
-                    Column2Value = teamlink
-                };
-                response = _sheetService.SendLinkToGoogle(sheetsService, message, _sheetService.CRGRTTTDSheetId, Refs.CRGRTTTDSheetName, input);
-            }
-            if( !response.Equals(Refs.DMBotSubmitTeamHint) )
+            else
             {
                 message.Author.SendMessageAsync($"The following team was successfully submitted for {eventName}");
                 message.Author.SendMessageAsync(teamlink);
@@ -318,7 +287,7 @@ namespace DiceMastersDiscordBot.Services
 
         private Task Log(LogMessage msg)
         {
-            Logger.LogDebug(msg.ToString());
+            _logger.LogDebug(msg.ToString());
             Console.WriteLine(msg.ToString());
             return Task.CompletedTask;
         }
