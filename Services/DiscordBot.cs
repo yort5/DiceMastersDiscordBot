@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ChallongeSharp.Models.ViewModels;
 using DiceMastersDiscordBot.Entities;
 using DiceMastersDiscordBot.Properties;
 using Discord;
@@ -242,7 +244,10 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".register"))
             {
-                RegisterForChallonge(message);
+                if(await RegisterForChallonge(message))
+                {
+                    await message.Channel.SendMessageAsync($"Thanks {message.Author.Username}, you are registered for the event in Challonge!");
+                }
             }
             else if (message.Content.ToLower().StartsWith(".help") || message.Content.ToLower().StartsWith("!help"))
             {
@@ -250,43 +255,61 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.StartsWith("!test"))
             {
-                var participants = await _challonge.GetAllParticipantsAsync("3a5g0n90");
+                var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
                 _logger.LogDebug($"{participants.Count}");
             }
         }
 
-        private void RegisterForChallonge(SocketMessage message)
+        private async Task<bool> RegisterForChallonge(SocketMessage message)
         {
             // first check if we have mapped Challonge info
-            var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
-            if(string.IsNullOrEmpty(userInfo.ChallongeName))
+            bool result = false;
+            try
             {
-                message.Author.SendMessageAsync("Please submit your Challonge username info by typing\n `.challonge mychallongeusername`");
+                var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
+                if (string.IsNullOrEmpty(userInfo.ChallongeName))
+                {
+                    await message.Author.SendMessageAsync("Please submit your Challonge username info by typing\n `.challonge mychallongeusername`");
+                    return false;
+                }
+                else
+                {
+                    ParticipantVm challongeParticipant = new ParticipantVm();
+                    challongeParticipant.ChallongeUsername = userInfo.ChallongeName;
+                    challongeParticipant.Misc = $"Discord: {userInfo.DiscordName}";
+                    challongeParticipant.ParticipantName = userInfo.DiscordName;
+                    challongeParticipant.Seed = 1;
+
+                    var participantInfo = await _challonge.AddParticipantAsync(challongeParticipant, _settings.GetOneOffChallongeId());
+                    await message.Author.SendMessageAsync($"Challonge User {participantInfo.ChallongeUsername} added");
+                    result = true;
+                }
             }
-            else
+            catch (Exception exc)
             {
-                message.Author.SendMessageAsync("This is in progress");
+                result = false;
+                Console.Write(exc.Message);
             }
+            return result;
         }
 
         private string GetCurrentFormat(SocketMessage message)
         {
             var homeSheet = _sheetService.GetHomeSheet(message.Channel.Name);
-            //var sheetsService = _sheetService.AuthorizeGoogleSheets();
 
-                try
-                {
-                    if(homeSheet ==  null) return "No information found for this week yet";
+            try
+            {
+                if (homeSheet == null) return "No information found for this week yet";
 
-                    var nl = Environment.NewLine;
+                var nl = Environment.NewLine;
                 var eventName = homeSheet.EventName != null ? string.Format($"{homeSheet.EventName}{nl}") : string.Empty;
-                    return $"{eventName}**{homeSheet.EventDate}**{nl}__Format__ - {homeSheet.FormatDescription}{nl}__Additional info:__{nl}{homeSheet.Info}";
-                }
-                catch (Exception exc)
-                {
-                    Console.WriteLine($"Exception in GetCurrentFormat: {exc.Message}");
-                    return $"Ooops! Something went wrong! - please contact Yort (bot)";
-                }
+                return $"{eventName}**{homeSheet.EventDate}**{nl}__Format__ - {homeSheet.FormatDescription}{nl}__Additional info:__{nl}{homeSheet.Info}";
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine($"Exception in GetCurrentFormat: {exc.Message}");
+                return $"Ooops! Something went wrong! - please contact Yort (bot)";
+            }
         }
 
         private string SubmitTeamLink(string eventName, string teamlink, SocketMessage message)
@@ -301,6 +324,18 @@ namespace DiceMastersDiscordBot.Services
             eventUserInput.DiscordName = message.Author.Username;
             eventUserInput.TeamLink = teamlink;
 
+            if (message.Channel.Name == _settings.GetDiceFightChannelName())
+            {
+                var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
+                if (string.IsNullOrEmpty(userInfo.WINName))
+                {
+                    message.Author.SendMessageAsync($"You do not have a WIN name on file. Please submit your WIN login by typing:{Environment.NewLine}`.win mywinlogin`");
+                }
+                else
+                {
+                    eventUserInput.Misc = userInfo.WINName;
+                }
+            }
             response = _sheetService.SendLinkToGoogle(sheetsService, homeSheet.SheetId, homeSheet.SheetName, eventUserInput);
 
             if(string.IsNullOrEmpty(response))

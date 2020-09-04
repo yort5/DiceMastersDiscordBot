@@ -180,5 +180,10 @@ namespace DiceMastersDiscordBot.Properties
         {
             return _config["OneOffCode"];
         }
+
+        public string GetOneOffChallongeId()
+        {
+            return _config["OneOffChallongeId"];
+        }
     }
 }
