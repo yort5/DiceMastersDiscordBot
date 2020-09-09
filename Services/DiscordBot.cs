@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -401,8 +402,9 @@ namespace DiceMastersDiscordBot.Services
                     // return Challonge list
                     List<UserInfo> userInfos = new List<UserInfo>();
                     var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
+                    var alphaParticipants = participants.OrderBy(p => p.ChallongeUsername);
                     playerListString.AppendLine($"There are currently {participants.Count} humans registered (and no robots):");
-                    foreach (var person in participants)
+                    foreach (var person in alphaParticipants)
                     {
                         var newPerson = _sheetService.GetUserInfoFromChallonge(person.ChallongeUsername);
                         if (newPerson == null || string.IsNullOrEmpty(newPerson.DiscordName))
