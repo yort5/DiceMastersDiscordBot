@@ -205,14 +205,7 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".list") || message.Content.ToLower().StartsWith("!list"))
             {
-                var playerList = _sheetService.GetCurrentPlayerList(message.Channel.Name);
-                StringBuilder playerListString = new StringBuilder();
-                playerListString.AppendLine($"There are currently {playerList.Count} humans registered (and no robots):");
-                foreach(var player in playerList)
-                {
-                    playerListString.AppendLine(player.DiscordName);
-                }
-                await message.Channel.SendMessageAsync(playerListString.ToString()) ;
+                await GetCurrentPlayerList(message);
             }
             else if (message.Content.ToLower().StartsWith(".here") || message.Content.ToLower().StartsWith("!here"))
             {
@@ -351,7 +344,48 @@ namespace DiceMastersDiscordBot.Services
         }
 
 
-
+        private async Task GetCurrentPlayerList(SocketMessage message)
+        {
+            try
+            {
+                StringBuilder playerListString = new StringBuilder();
+                if (message.Channel.Name == _settings.GetOneOffChannelName())
+                {
+                    await message.Channel.SendMessageAsync("Retrieving list of players registered in Challonge...");
+                    // return Challonge list
+                    List<UserInfo> userInfos = new List<UserInfo>();
+                    var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
+                    foreach (var person in participants)
+                    {
+                        var newPerson = _sheetService.GetUserInfoFromChallonge(person.ChallongeUsername);
+                        if (newPerson == null || string.IsNullOrEmpty(newPerson.DiscordName))
+                        {
+                            playerListString.AppendLine(person.ChallongeUsername);
+                        }
+                        else
+                        {
+                            playerListString.AppendLine($"{person.ChallongeUsername}  (Discord - {newPerson.DiscordName})");
+                        }
+                    }
+                    playerListString.AppendLine("(if you want your Discord name to show up, send a direct message to the Dice Masters Bot with `.challonge mychallongename`)");
+                }
+                else
+                {
+                    var playerList = _sheetService.GetCurrentPlayerList(message.Channel.Name);
+                    playerListString.AppendLine($"There are currently {playerList.Count} humans registered (and no robots):");
+                    foreach (var player in playerList)
+                    {
+                        playerListString.AppendLine(player.DiscordName);
+                    }
+                }
+                await message.Channel.SendMessageAsync(playerListString.ToString());
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError($"Exception trying to get tournament list from Challonge: {exc.Message}");
+                await message.Channel.SendMessageAsync("Sorry, there was an issue getting the player list from Challonge.");
+            }
+        }
 
         //public async Task InstallCommands()
         //{

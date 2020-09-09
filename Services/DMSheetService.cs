@@ -396,19 +396,27 @@ namespace DiceMastersDiscordBot.Services
             var sheetRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
             var sheetResponse = sheetRequest.Execute();
             UserInfo userInfo = new UserInfo();
-            foreach (var row in sheetResponse.Values)
+            userInfo.ChallongeName = name;
+            try
             {
-                if (row.Count >= nameIndex)
+                foreach (var row in sheetResponse.Values)
                 {
-                    if (row[nameIndex].ToString() == name)
+                    if (row.Count > nameIndex)
                     {
-                        userInfo.DiscordName = row[0].ToString();
-                        userInfo.WINName = row.Count >= 2 ? row[1].ToString() : string.Empty;
-                        userInfo.ChallongeName = row.Count >= 3 ? row[2].ToString() : string.Empty;
-                        userInfo.TwitchName = row.Count >= 4 ? row[3].ToString() : string.Empty;
-                        break;
+                        if (row[nameIndex].ToString() == name)
+                        {
+                            userInfo.DiscordName = row[0].ToString();
+                            userInfo.WINName = row.Count >= 2 ? row[1].ToString() : string.Empty;
+                            userInfo.ChallongeName = row.Count >= 3 ? row[2].ToString() : string.Empty;
+                            userInfo.TwitchName = row.Count >= 4 ? row[3].ToString() : string.Empty;
+                            break;
+                        }
                     }
                 }
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError($"Exception trying to find a UserInfo: {exc.Message}");
             }
             return userInfo;
         }
