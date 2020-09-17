@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ChallongeSharp.Models.ViewModels;
+using ChallongeSharp.Models.ViewModels.Types;
 using DiceMastersDiscordBot.Entities;
 using DiceMastersDiscordBot.Properties;
 using Discord;
@@ -208,16 +209,53 @@ namespace DiceMastersDiscordBot.Services
             {
                 await GetCurrentPlayerList(message);
             }
+            else if (message.Content.ToLower().StartsWith(".report") || message.Content.ToLower().StartsWith("!report"))
+            {
+                await RecordScore(message);
+            }
             else if (message.Content.ToLower().StartsWith(".here") || message.Content.ToLower().StartsWith("!here"))
             {
                 EventUserInput eventUserInput = new EventUserInput() { DiscordName = message.Author.Username, EventName = message.Channel.Name };
-                if(_sheetService.MarkPlayerHere(eventUserInput))
+                if (message.Channel.Name == _settings.GetOneOffChannelName())
                 {
-                    await message.Channel.SendMessageAsync($"Player {eventUserInput.DiscordName} marked as HERE in the spreadsheet");
+                    var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
+                    if (string.IsNullOrEmpty(userInfo.ChallongeName))
+                    {
+                        await message.Channel.SendMessageAsync($"Cannot check in Discord user {message.Author.Username} as there is no mapped Challonge ID. Please use `.challonge mychallongeusername` to tell the {_settings.GetBotName()} who you are in Challonge.");
+                    }
+                    else
+                    {
+                        var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
+                        var player = participants.SingleOrDefault(p => p.ChallongeUsername == userInfo.ChallongeName);
+                        if(player == null)
+                        {
+                            await message.Channel.SendMessageAsync($"There was an error checking in Challonge User {userInfo.ChallongeName} - they were not returned as registered for this tournament.");
+                        }
+                        else
+                        {
+                            var resultParticipant = await _challonge.CheckInParticipantAsync(player.Id.ToString(), _settings.GetOneOffChallongeId());
+                            if (resultParticipant.CheckedIn == true)
+                            {
+                                await message.Channel.SendMessageAsync($"Success! Challonge User {userInfo.ChallongeName} (Discord: {userInfo.DiscordName}) is checked in for the event!");
+                            }
+                            else
+                            {
+                                await message.Channel.SendMessageAsync($"There was an error checking in Challonge User {userInfo.ChallongeName} - please check in manually at Challonge.com");
+                            }
+                        }
+                    }
+
                 }
                 else
                 {
-                    await message.Channel.SendMessageAsync($"Sorry, could not mark {eventUserInput.DiscordName} as HERE as they were not found in the spreadsheet for this event.");
+                    if (_sheetService.MarkPlayerHere(eventUserInput))
+                    {
+                        await message.Channel.SendMessageAsync($"Player {eventUserInput.DiscordName} marked as HERE in the spreadsheet");
+                    }
+                    else
+                    {
+                        await message.Channel.SendMessageAsync($"Sorry, could not mark {eventUserInput.DiscordName} as HERE as they were not found in the spreadsheet for this event.");
+                    }
                 }
             }
             else if (message.Content.ToLower().StartsWith(".drop") || message.Content.ToLower().StartsWith("!drop"))
@@ -297,6 +335,90 @@ namespace DiceMastersDiscordBot.Services
             {
                 var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
                 _logger.LogDebug($"{participants.Count}");
+            }
+        }
+
+        private async Task RecordScore(SocketMessage message)
+        {
+            if (message.Channel.Name == _settings.GetOneOffChannelName())
+            {
+                try
+                {
+
+                    var args = message.Content.Split(" ");
+                    if (args.Count() >= 5)
+                    {
+                        var firstPlayerArg = args[1];
+                        var secondPlayerArg = args[3];
+                        var score = args[4];
+
+                        var firstPlayerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == firstPlayerArg);
+                        var secondPlayerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == secondPlayerArg);
+
+                        var firstPlayerInfo = _sheetService.GetUserInfoFromDiscord(firstPlayerDiscordUser != null ? firstPlayerDiscordUser.Username : firstPlayerArg);
+                        var secondPlayerInfo = _sheetService.GetUserInfoFromDiscord(secondPlayerDiscordUser != null ? secondPlayerDiscordUser.Username : secondPlayerArg);
+
+                        await message.Channel.SendMessageAsync($"Attempting to report scores for Challonge users {firstPlayerInfo.ChallongeName} and {secondPlayerInfo.ChallongeName}...");
+
+                        var allPlayersChallongeInfo = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
+                        var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername == firstPlayerInfo.ChallongeName);
+                        //var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == firstPlayerInfo.ChallongeName);
+                        var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername == secondPlayerInfo.ChallongeName);
+                        //var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == secondPlayerInfo.ChallongeName);
+                        var allMatches = await _challonge.GetAllMatchesAsync(_settings.GetOneOffChallongeId());
+
+                        bool playerOneisOne = true;
+                        var possibleMatch = allMatches.Where(m => m.Player1Id == firstPlayerChallongeInfo.Id && m.Player2Id == secondPlayerChallongeInfo.Id);
+                        if( !possibleMatch.Any())
+                        {
+                            playerOneisOne = false;
+                            possibleMatch = allMatches.Where(m => m.Player1Id == secondPlayerChallongeInfo.Id && m.Player2Id == firstPlayerChallongeInfo.Id);
+                        }
+                        if (possibleMatch.Any() && possibleMatch.Count() == 1)
+                        {
+                            int playerOneScore = 0;
+                            int playerTwoScore = 0;
+
+                            if (playerOneisOne)
+                            {
+                                int.TryParse(score.First<char>().ToString(), out playerOneScore);
+                                int.TryParse(score.Last<char>().ToString(), out playerTwoScore);
+                            }
+                            else
+                            {
+                                int.TryParse(score.First<char>().ToString(), out playerTwoScore);
+                                int.TryParse(score.Last<char>().ToString(), out playerOneScore);
+                            }
+
+                            var theMatch = possibleMatch.FirstOrDefault();
+                            var result = await _challonge.UpdateMatchAsync(_settings.GetOneOffChallongeId(), theMatch.Id.GetValueOrDefault(), playerOneScore, playerTwoScore);
+
+                            var confirmedWinner = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
+                            var confirmedLoser = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
+
+                            await message.Channel.SendMessageAsync($"Received verification that Challonge user {confirmedWinner.ChallongeUsername} won over Challonge user {confirmedLoser.ChallongeUsername}");
+                        }
+                        else
+                        {
+                            await message.Channel.SendMessageAsync($"Sorry, unable to retrieve the match information for this pair of players.");
+                        }
+                    }
+                    else
+                    {
+                        StringBuilder errMsg = new StringBuilder();
+                        errMsg.AppendLine("Sorry, score was not reported, could not parse the message. Please have the losing player report the score using the following format:");
+                        errMsg.AppendLine("`.report @winnerDiscordName beat @loserDiscordName 2-1`");
+                        await message.Channel.SendMessageAsync(errMsg.ToString());
+                    }
+                }
+                catch (Exception exc)
+                {
+                    await message.Channel.SendMessageAsync($"Aha! You've managed to trip the dreaded EXCEPTION. Don't get too excited, this is beta functionality, it's not that hard! TOs, please verify this score manually!");
+                }
+            }
+            else
+            {
+                await message.Channel.SendMessageAsync($"Sorry, score reporting is not yet available for this channel.");
             }
         }
 
@@ -409,7 +531,7 @@ namespace DiceMastersDiscordBot.Services
                         var newPerson = _sheetService.GetUserInfoFromChallonge(person.ChallongeUsername);
                         if (newPerson == null || string.IsNullOrEmpty(newPerson.DiscordName))
                         {
-                            playerListString.AppendLine(person.ChallongeUsername);
+                            playerListString.AppendLine(person.ChallongeUsername.PadRight(20));
                         }
                         else
                         {

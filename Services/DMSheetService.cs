@@ -396,14 +396,13 @@ namespace DiceMastersDiscordBot.Services
             var sheetRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
             var sheetResponse = sheetRequest.Execute();
             UserInfo userInfo = new UserInfo();
-            userInfo.ChallongeName = name;
             try
             {
                 foreach (var row in sheetResponse.Values)
                 {
                     if (row.Count > nameIndex)
                     {
-                        if (row[nameIndex].ToString() == name)
+                        if (row[nameIndex].ToString().ToLower() == name.ToLower())
                         {
                             userInfo.DiscordName = row[0].ToString();
                             userInfo.WINName = row.Count >= 2 ? row[1].ToString() : string.Empty;

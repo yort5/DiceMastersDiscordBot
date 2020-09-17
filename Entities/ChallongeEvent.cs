@@ -5,17 +5,15 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using ChallongeSharp.Clients;
-using ChallongeSharp.Models.ChallongeModels;
 using DiceMastersDiscordBot.Properties;
-using ChallongeSharp.Models.ViewModels;
-using ChallongeSharp.Helpers;
 using System.Reflection;
 using System.ComponentModel;
+using ChallongeSharp.Models.ViewModels.Types;
+using ChallongeSharp.Models.ViewModels;
+using ChallongeSharp.Helpers;
+using ChallongeSharp.Models.ChallongeModels;
 
 namespace DiceMastersDiscordBot.Entities
 {
@@ -37,6 +35,15 @@ namespace DiceMastersDiscordBot.Entities
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Basic {encodedToken}");
         }
 
+        public async Task<Participant> GetParticipantAsync(string tournamentName, string participantId)
+        {
+            var requestUrl = $"tournaments/{tournamentName}/participants/{participantId}.json";
+
+            var participant = await GetAsync<ParticipantResponse>(requestUrl);
+            return participant.Participant;
+        }
+
+
         public async Task<List<Participant>> GetAllParticipantsAsync(string tournamentName)
         {
             var requestUrl = $"tournaments/{tournamentName}/participants.json";
@@ -54,6 +61,66 @@ namespace DiceMastersDiscordBot.Entities
             return participant.Participant;
         }
 
+        public async Task<Participant> CheckInParticipantAsync(string participantId, string tournamentName)
+        {
+            var requestUrl = $"tournaments/{tournamentName}/participants/{participantId}/check_in.json";
+
+            var participant = await PostAsync<ParticipantResponse>(requestUrl);
+            return participant.Participant;
+        }
+
+        public async Task<List<ChallongeSharp.Models.ChallongeModels.Match>> GetAllMatchesAsync(string tournamentName, TournamentState state = null, long? participantId = null)
+        {
+            var requestUrl = $"tournaments/{tournamentName}/matches.json";
+            var options = new MatchOptions
+            {
+                State = state,
+                ParticipantId = participantId
+            };
+
+            var matches = await GetAsync<List<ChallongeSharp.Models.ChallongeModels.MatchResponse>>(requestUrl, options);
+            return matches.Select(m => m.Match).ToList();
+        }
+
+        public async Task<Match> GetMatchAsync(string tournamentName, long matchId,
+            bool includeAttachments = false)
+        {
+            var requestUrl = $"tournaments/{tournamentName}/matches/{matchId}.json";
+            var options = new MatchOptions
+            {
+                IncludeAttachments = includeAttachments
+            };
+
+            var match = await GetAsync<MatchResponse>(requestUrl, options);
+            return match.Match;
+        }
+
+
+        public async Task<Match> UpdateMatchAsync(string tournamentName, long matchId, int player1Score,
+            int player2Score, int? player1Votes = null, int? player2Votes = null)
+        {
+            var match = await GetMatchAsync(tournamentName, matchId);
+
+            var requestUrl = $"tournaments/{tournamentName}/matches/{matchId}.json";
+            var options = new MatchOptions
+            {
+                Player1Score = player1Score,
+                Player2Score = player2Score,
+                Player1Votes = player1Votes,
+                Player2Votes = player2Votes,
+                Player1Id = match.Player1Id,
+                Player2Id = match.Player2Id
+            };
+
+            var updatedMatch = await PutAsync<MatchResponse>(requestUrl, options);
+            return updatedMatch.Match;
+        }
+
+
+
+
+
+
 
         public async Task<T> GetAsync<T>(string url)
         {
@@ -65,7 +132,24 @@ namespace DiceMastersDiscordBot.Entities
             return JsonConvert.DeserializeObject<T>(await response.Content.ReadAsStringAsync());
         }
 
-        public async Task<T> PostAsync<T>(string url, FormUrlEncodedContent content)
+        public async Task<T> GetAsync<T>(string url, MatchOptions options)
+        {
+            if (options != null)
+            {
+                var requestParams = ToChallongeRequestParams(options);
+                url += $"?{requestParams}";
+            }
+
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/{url}");
+
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            return JsonConvert.DeserializeObject<T>(await response.Content.ReadAsStringAsync());
+        }
+
+
+        public async Task<T> PostAsync<T>(string url, FormUrlEncodedContent content = null)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/{url}") { Content = content };
 
@@ -74,6 +158,22 @@ namespace DiceMastersDiscordBot.Entities
 
             return JsonConvert.DeserializeObject<T>(await response.Content.ReadAsStringAsync());
         }
+
+        public async Task<T> PutAsync<T>(string url, MatchOptions content)
+        {
+            FormUrlEncodedContent formUrlEncodedContent = GetUrlEncodedContent(content);
+            var request = new HttpRequestMessage(HttpMethod.Put, $"/v1/{url}") { Content = formUrlEncodedContent };
+
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            return JsonConvert.DeserializeObject<T>(await response.Content.ReadAsStringAsync());
+        }
+
+
+
+
+
 
         private FormUrlEncodedContent GetUrlEncodedContent(ParticipantVm model)
         {
@@ -85,7 +185,17 @@ namespace DiceMastersDiscordBot.Entities
             return new FormUrlEncodedContent(requestContent);
         }
 
-        private static KeyValuePair<string, string> GetKvpRequestParam<T>(PropertyInfo property, T viewModel)
+        private FormUrlEncodedContent GetUrlEncodedContent(MatchOptions options)
+        {
+            var properties = options.GetType().GetProperties();
+            var requestContent = properties
+                .Where(prop => prop.GetValue(options) != null && Attribute.IsDefined(prop, typeof(ChallongeNameAttribute)))
+                .Select(prop => GetKvpRequestParam(prop, options)).ToList();
+
+            return new FormUrlEncodedContent(requestContent);
+        }
+
+        private KeyValuePair<string, string> GetKvpRequestParam<T>(PropertyInfo property, T viewModel)
         {
             object propertyValue = property.GetValue(viewModel);
             AttributeCollection attributes = TypeDescriptor.GetProperties(viewModel)[property.Name].Attributes;
@@ -93,6 +203,28 @@ namespace DiceMastersDiscordBot.Entities
             return new KeyValuePair<string, string>(propertyDescription, propertyValue.ToString());
         }
 
+        private string ToChallongeRequestParams(MatchOptions options)
+        {
+            var properties = options.GetType().GetProperties();
+            var requestParams = properties
+                .Where(prop =>
+                    prop.GetValue(options) != null && Attribute.IsDefined(prop, typeof(ChallongeNameAttribute)))
+                .Select(prop => GetStringRequestParam(prop, options)).ToList();
+
+            return $"{string.Join("&", requestParams)}";
+        }
+
+
+        private string GetStringRequestParam<T>(PropertyInfo property, T viewModel)
+        {
+            object propertyValue = property.GetValue(viewModel);
+            AttributeCollection attributes = TypeDescriptor.GetProperties(viewModel)[property.Name].Attributes;
+            string propertyDescription = ((ChallongeNameAttribute)attributes[typeof(ChallongeNameAttribute)]).Name;
+            if (propertyValue.GetType().Name.Equals(typeof(DateTime).Name))
+                propertyValue = ((DateTime)propertyValue).ToString("yyyy-MM-dd");
+
+            return $"{propertyDescription}={propertyValue}";
+        }
 
     }
 }
