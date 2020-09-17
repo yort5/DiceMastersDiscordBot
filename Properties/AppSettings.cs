@@ -64,6 +64,7 @@ namespace DiceMastersDiscordBot.Properties
             helpString.Append($"{nl}    .list - lists the current people signed up for the event.");
             helpString.Append($"{nl}    .here - marks a person as HERE in the spreadsheet for the event (only use at the time of the event).");
             helpString.Append($"{nl}    .drop - marks a person as DROPPED in spreadsheet for the event.");
+            helpString.Append($"{nl}    .report @winnerDiscord over @loserDiscord 2-1 - reports scores for an event configured with Challonge integration.");
             helpString.Append($"{nl}VIA DIRECT MESSAGE - you can also send the {_BotName} a direct message");
             helpString.Append($"{nl}    .submit <event> <teambuilder link> - current regular events are: wda (Weekly Dice Arena), df (Dice Fight), totm (Team of the Month)");
             helpString.Append($"{nl}                                       - current standa-alone: {GetOneOffCode()}");
