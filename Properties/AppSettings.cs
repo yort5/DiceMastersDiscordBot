@@ -184,7 +184,13 @@ namespace DiceMastersDiscordBot.Properties
 
         public string GetOneOffChallongeId()
         {
-            return _config["OneOffChallongeId"];
+            //            return _config["OneOffChallongeId"];
+            return "troytesttournament";
+        }
+
+        public string GetOneOffTODiscordID()
+        {
+            return _config["OneOffTODiscordID"];
         }
     }
 }

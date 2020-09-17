@@ -367,40 +367,55 @@ namespace DiceMastersDiscordBot.Services
                         //var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == secondPlayerInfo.ChallongeName);
                         var allMatches = await _challonge.GetAllMatchesAsync(_settings.GetOneOffChallongeId());
 
-                        bool playerOneisOne = true;
-                        var possibleMatch = allMatches.Where(m => m.Player1Id == firstPlayerChallongeInfo.Id && m.Player2Id == secondPlayerChallongeInfo.Id);
-                        if( !possibleMatch.Any())
-                        {
-                            playerOneisOne = false;
-                            possibleMatch = allMatches.Where(m => m.Player1Id == secondPlayerChallongeInfo.Id && m.Player2Id == firstPlayerChallongeInfo.Id);
-                        }
-                        if (possibleMatch.Any() && possibleMatch.Count() == 1)
-                        {
-                            int playerOneScore = 0;
-                            int playerTwoScore = 0;
+                        var openMatches = allMatches.Where(m => m.State == "open");
 
-                            if (playerOneisOne)
+                        if (openMatches.Count() > 1)
+                        {
+                            bool playerOneisOne = true;
+                            var possibleMatch = allMatches.Where(m => m.Player1Id == firstPlayerChallongeInfo.Id && m.Player2Id == secondPlayerChallongeInfo.Id);
+                            if (!possibleMatch.Any())
                             {
-                                int.TryParse(score.First<char>().ToString(), out playerOneScore);
-                                int.TryParse(score.Last<char>().ToString(), out playerTwoScore);
+                                playerOneisOne = false;
+                                possibleMatch = allMatches.Where(m => m.Player1Id == secondPlayerChallongeInfo.Id && m.Player2Id == firstPlayerChallongeInfo.Id);
+                            }
+                            if (possibleMatch.Any() && possibleMatch.Count() == 1)
+                            {
+                                int playerOneScore = 0;
+                                int playerTwoScore = 0;
+
+                                if (playerOneisOne)
+                                {
+                                    int.TryParse(score.First<char>().ToString(), out playerOneScore);
+                                    int.TryParse(score.Last<char>().ToString(), out playerTwoScore);
+                                }
+                                else
+                                {
+                                    int.TryParse(score.First<char>().ToString(), out playerTwoScore);
+                                    int.TryParse(score.Last<char>().ToString(), out playerOneScore);
+                                }
+
+                                var theMatch = possibleMatch.FirstOrDefault();
+                                var result = await _challonge.UpdateMatchAsync(_settings.GetOneOffChallongeId(), theMatch.Id.GetValueOrDefault(), playerOneScore, playerTwoScore);
+
+                                var confirmedWinner = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
+                                var confirmedLoser = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
+
+                                await message.Channel.SendMessageAsync($"Received verification that Challonge user {confirmedWinner.ChallongeUsername} won over Challonge user {confirmedLoser.ChallongeUsername}");
                             }
                             else
                             {
-                                int.TryParse(score.First<char>().ToString(), out playerTwoScore);
-                                int.TryParse(score.Last<char>().ToString(), out playerOneScore);
+                                await message.Channel.SendMessageAsync($"Sorry, unable to retrieve the match information for this pair of players.");
                             }
-
-                            var theMatch = possibleMatch.FirstOrDefault();
-                            var result = await _challonge.UpdateMatchAsync(_settings.GetOneOffChallongeId(), theMatch.Id.GetValueOrDefault(), playerOneScore, playerTwoScore);
-
-                            var confirmedWinner = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
-                            var confirmedLoser = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
-
-                            await message.Channel.SendMessageAsync($"Received verification that Challonge user {confirmedWinner.ChallongeUsername} won over Challonge user {confirmedLoser.ChallongeUsername}");
                         }
                         else
                         {
-                            await message.Channel.SendMessageAsync($"Sorry, unable to retrieve the match information for this pair of players.");
+                            // Because Challonge automatically populates the next bracket as soon as the last score is reported and then you can't change it
+                            // don't autoreport the last score, instead send it to the TO to let them do manually
+                            ulong toDiscordUserId;
+                            ulong.TryParse(_settings.GetOneOffTODiscordID(), out toDiscordUserId);
+                            var toDiscordUser = _client.GetUser(toDiscordUserId);
+                            var theMatch = openMatches.FirstOrDefault();
+                            await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {theMatch.Round}:{Environment.NewLine}{message.Content}");
                         }
                     }
                     else

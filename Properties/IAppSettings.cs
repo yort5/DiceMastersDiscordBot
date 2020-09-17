@@ -18,6 +18,7 @@ namespace DiceMastersDiscordBot.Properties
         public string GetOneOffChannelName();
         public string GetOneOffCode();
         public string GetOneOffChallongeId();
+        public string GetOneOffTODiscordID();
         public string GetTotMSheetId();
         public string GetTotMSheetName();
         public string GetTotMChannelName();
