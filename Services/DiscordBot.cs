@@ -531,14 +531,18 @@ namespace DiceMastersDiscordBot.Services
                         var newPerson = _sheetService.GetUserInfoFromChallonge(person.ChallongeUsername);
                         if (newPerson == null || string.IsNullOrEmpty(newPerson.DiscordName))
                         {
-                            playerListString.AppendLine(person.ChallongeUsername.PadRight(20));
+                            playerListString.AppendLine(person.ChallongeUsername);
                         }
                         else
                         {
-                            playerListString.AppendLine($"{person.ChallongeUsername}  (Discord - {newPerson.DiscordName})");
+                            playerListString.AppendLine($"{person.ChallongeUsername.PadRight(20)}  (Discord - {newPerson.DiscordName})");
                         }
                     }
-                    playerListString.AppendLine("(if you want your Discord name to show up, send a direct message to the Dice Masters Bot with `.challonge mychallongename`)");
+                    playerListString.AppendLine("---");
+                    playerListString.AppendLine("Note: the first column is the list of usernames from Challonge.");
+                    playerListString.AppendLine("If your Challonge name does not have a Discord name in the second column,");
+                    playerListString.AppendLine("the bot does not know what your Challonge name is, and will not be able to report your scores.");
+                    playerListString.AppendLine("Please let the bot know who you are on Challonge with `.challonge mychallongename`)");
                 }
                 else
                 {
