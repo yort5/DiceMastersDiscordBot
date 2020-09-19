@@ -346,9 +346,13 @@ namespace DiceMastersDiscordBot.Services
                 {
 
                     var scoreChannel = _client.GetChannel(_settings.GetScoresChannelId()) as IMessageChannel;
-                    await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", ""));
+                    //await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", ""));
 
-                    var args = message.Content.Split(" ");
+                    var argOld = message.Content.Split(" ");
+
+                    var args = System.Text.RegularExpressions.Regex.Split(message.Content, @"\s+");
+
+
                     if (args.Count() >= 5)
                     {
                         var firstPlayerArg = args[1];
@@ -361,7 +365,7 @@ namespace DiceMastersDiscordBot.Services
                         var firstPlayerInfo = _sheetService.GetUserInfoFromDiscord(firstPlayerDiscordUser != null ? firstPlayerDiscordUser.Username : firstPlayerArg);
                         var secondPlayerInfo = _sheetService.GetUserInfoFromDiscord(secondPlayerDiscordUser != null ? secondPlayerDiscordUser.Username : secondPlayerArg);
 
-                        await message.Channel.SendMessageAsync($"Attempting to report scores for Challonge users {firstPlayerInfo.ChallongeName} and {secondPlayerInfo.ChallongeName}...");
+                        //await message.Channel.SendMessageAsync($"Attempting to report scores for Challonge users {firstPlayerInfo.ChallongeName} and {secondPlayerInfo.ChallongeName}...");
 
                         var allPlayersChallongeInfo = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
                         var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername == firstPlayerInfo.ChallongeName);
@@ -403,7 +407,14 @@ namespace DiceMastersDiscordBot.Services
                                 var confirmedWinner = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
                                 var confirmedLoser = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.LoserId);
 
-                                await message.Channel.SendMessageAsync($"Received verification that Challonge user {confirmedWinner.ChallongeUsername} won over Challonge user {confirmedLoser.ChallongeUsername}");
+                                if (confirmedWinner != null && confirmedLoser != null)
+                                {
+                                    await message.Channel.SendMessageAsync($"Received verification that Challonge user {confirmedWinner.ChallongeUsername} won over Challonge user {confirmedLoser.ChallongeUsername}");
+                                }
+                                else
+                                {
+                                    await message.Channel.SendMessageAsync($"Reported for {firstPlayerInfo.DiscordName} and {secondPlayerInfo.DiscordName}, apparently a tie?");
+                                }
                             }
                             else
                             {
