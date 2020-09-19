@@ -401,7 +401,7 @@ namespace DiceMastersDiscordBot.Services
                                 var result = await _challonge.UpdateMatchAsync(_settings.GetOneOffChallongeId(), theMatch.Id.GetValueOrDefault(), playerOneScore, playerTwoScore);
 
                                 var confirmedWinner = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
-                                var confirmedLoser = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
+                                var confirmedLoser = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.LoserId);
 
                                 await message.Channel.SendMessageAsync($"Received verification that Challonge user {confirmedWinner.ChallongeUsername} won over Challonge user {confirmedLoser.ChallongeUsername}");
                             }
