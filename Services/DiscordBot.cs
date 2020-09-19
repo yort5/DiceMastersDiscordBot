@@ -345,6 +345,9 @@ namespace DiceMastersDiscordBot.Services
                 try
                 {
 
+                    var scoreChannel = _client.GetChannel(_settings.GetScoresChannelId()) as IMessageChannel;
+                    await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", ""));
+
                     var args = message.Content.Split(" ");
                     if (args.Count() >= 5)
                     {
@@ -416,6 +419,7 @@ namespace DiceMastersDiscordBot.Services
                             var toDiscordUser = _client.GetUser(toDiscordUserId);
                             var theMatch = openMatches.FirstOrDefault();
                             await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {theMatch.Round}:{Environment.NewLine}{message.Content}");
+                            await scoreChannel.SendMessageAsync("-----------------");
                         }
                     }
                     else
@@ -428,6 +432,7 @@ namespace DiceMastersDiscordBot.Services
                 }
                 catch (Exception exc)
                 {
+                    _logger.LogError($"Exception reporting scores: {exc.Message}");
                     await message.Channel.SendMessageAsync($"Aha! You've managed to trip the dreaded EXCEPTION. Don't get too excited, this is beta functionality, it's not that hard! TOs, please verify this score manually!");
                 }
             }

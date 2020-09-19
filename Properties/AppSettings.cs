@@ -191,5 +191,12 @@ namespace DiceMastersDiscordBot.Properties
         {
             return _config["OneOffTODiscordID"];
         }
+
+        public ulong GetScoresChannelId()
+        {
+            ulong channelId = 0;
+            ulong.TryParse(_config["ScoresChannelId"], out channelId);
+            return channelId;
+        }
     }
 }

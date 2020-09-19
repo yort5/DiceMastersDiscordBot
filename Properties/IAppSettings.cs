@@ -23,6 +23,7 @@ namespace DiceMastersDiscordBot.Properties
         public string GetTotMSheetName();
         public string GetTotMChannelName();
         public string GetMasterSheetId();
+        public ulong GetScoresChannelId();
 
         public string GetColumnSpan();
         public string GetBotName();
