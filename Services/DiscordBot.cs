@@ -428,8 +428,15 @@ namespace DiceMastersDiscordBot.Services
                             ulong toDiscordUserId;
                             ulong.TryParse(_settings.GetOneOffTODiscordID(), out toDiscordUserId);
                             var toDiscordUser = _client.GetUser(toDiscordUserId);
-                            var theMatch = openMatches.FirstOrDefault();
-                            await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {theMatch.Round}:{Environment.NewLine}{message.Content}");
+                            string roundString = "?";
+                            try
+                            {
+                                // lazy way to make sure it doesn't blow
+                                roundString = openMatches.FirstOrDefault().Round.ToString();
+                            }
+                            catch { }
+
+                            await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
                             await scoreChannel.SendMessageAsync("-----------------");
                         }
                     }
