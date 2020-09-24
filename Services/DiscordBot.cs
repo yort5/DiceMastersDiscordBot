@@ -276,10 +276,11 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".register"))
             {
-                if(await RegisterForChallonge(message))
-                {
-                    await message.Channel.SendMessageAsync($"Thanks {message.Author.Username}, you are registered for the event in Challonge!");
-                }
+                await message.Channel.SendMessageAsync("This event is not enabled for auto-registration. Please register manually.");
+                //if(await RegisterForChallonge(message))
+                //{
+                //    await message.Channel.SendMessageAsync($"Thanks {message.Author.Username}, you are registered for the event in Challonge!");
+                //}
             }
             else if (message.Content.ToLower().StartsWith("!win") || message.Content.ToLower().StartsWith(".win"))
             {
