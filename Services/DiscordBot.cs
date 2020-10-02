@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using ChallongeSharp.Models.ViewModels;
 using ChallongeSharp.Models.ViewModels.Types;
 using DiceMastersDiscordBot.Entities;
+using DiceMastersDiscordBot.Events;
 using DiceMastersDiscordBot.Properties;
 using Discord;
 using Discord.Commands;
@@ -31,22 +32,24 @@ namespace DiceMastersDiscordBot.Services
         private readonly IAppSettings _settings;
         private DiscordSocketClient _client;
         private ChallongeEvent _challonge;
+        private readonly DiceMastersEventFactory _eventFactory;
         //private CommandService _commands;
 
 
         private readonly DMSheetService _sheetService;
+        private List<EventManifest> _currentEventList = new List<EventManifest>();
 
-        private const string SUBMIT_STRING = "!submit";
 
-        
         public DiscordBot(ILoggerFactory loggerFactory,
                             IAppSettings appSettings,
                             DMSheetService dMSheetService,
+                            DiceMastersEventFactory eventFactory,
                             ChallongeEvent challonge)
         {
             _logger = loggerFactory.CreateLogger<DiscordBot>();
             _settings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
             _sheetService = dMSheetService;
+            _eventFactory = eventFactory;
             _challonge = challonge;
         }
 
@@ -79,9 +82,10 @@ namespace DiceMastersDiscordBot.Services
                 {
                     _logger.LogInformation("ServiceA is doing background work.");
 
+                    LoadCurrentEvents();
                     _sheetService.CheckSheets();
 
-                    await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
                 }
             } catch (Exception exc)
             {
@@ -91,110 +95,28 @@ namespace DiceMastersDiscordBot.Services
             _logger.LogInformation("ServiceA has stopped.");
         }
 
+        private void LoadCurrentEvents()
+        {
+            _currentEventList = _sheetService.LoadEventManifests();
+        }
+
         private async Task DiscordMessageReceived(SocketMessage message)
         {
-            if (message.Author.IsBot) return;
+            if(message.Author.IsBot) return;
+            if (!(message.Content.StartsWith(".") || message.Content.StartsWith("!"))) return;
+
             var dmchannelID = await message.Author.GetOrCreateDMChannelAsync();
-            if (message.Channel.Id == dmchannelID.Id)
-            {
-                if (message.Content.ToLower().StartsWith("submit") || message.Content.ToLower().StartsWith("!submit") || message.Content.ToLower().StartsWith(".submit"))
-                {
-                    try
-                    {
-                        var eventName = "undetermined";
-                        var args = message.Content.Split(' ');
+            bool isDM = (message.Channel.Id == dmchannelID.Id);
 
-                        var inputCode = args[1].ToUpper();
-
-                        if(inputCode == "WDA" || inputCode == "WEEKLY-DICE-ARENA")
-                        {
-                            eventName = _settings.GetWDAChannelName();
-                        }
-                        else if(inputCode == "DF" || inputCode == "DICE-FIGHT")
-                        {
-                            eventName = _settings.GetDiceFightChannelName();
-                        }
-                        else if(inputCode == "TOTM" || inputCode == "TEAM-OF-THE-MONTH")
-                        {
-                            eventName = _settings.GetTotMChannelName();
-                        }
-                        else if(inputCode == _settings.GetOneOffCode())
-                        {
-                            eventName = _settings.GetOneOffChannelName();
-                        }
-
-                        await message.Channel.SendMessageAsync(SubmitTeamLink(eventName, args[2], message));
-                    }
-                    catch (Exception exc)
-                    {
-                        Console.WriteLine($"Exception submitting team via DM: {exc.Message}");
-                        await message.Channel.SendMessageAsync("Sorry, I was unable to determine which event you wanted to submit to.");
-                        await message.Channel.SendMessageAsync("Type `.help` for more information.");
-                        await message.Channel.SendMessageAsync("If you think you're doing it right and it still doesn't work, message Yort or post in #bot-uprising");
-                    }
-                }
-                else if (message.Content.ToLower().StartsWith("!win") || message.Content.ToLower().StartsWith(".win"))
-                {
-                    try
-                    {
-                        var sheetsService = _sheetService.AuthorizeGoogleSheets();
-                        string[] args = message.Content.Split(" ");
-                        UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, WINName = args[1].ToString() };
-                        await message.Channel.SendMessageAsync(_sheetService.SendUserInfoToGoogle(userInfo));
-
-                    }
-                    catch (Exception exc)
-                    {
-                        Console.WriteLine($"Exception in UpdateWinName: {exc.Message}");
-                        await message.Channel.SendMessageAsync("Sorry, I was unable to record your WIN Name. Please contact Yort and tell him what went wrong");
-                    }
-                }
-                else if (message.Content.ToLower().StartsWith("!challonge") || message.Content.ToLower().StartsWith(".challonge"))
-                {
-                    try
-                    {
-                        var sheetsService = _sheetService.AuthorizeGoogleSheets();
-                        string[] args = message.Content.Split(" ");
-                        UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, ChallongeName = args[1].ToString() };
-                        await message.Channel.SendMessageAsync(_sheetService.SendUserInfoToGoogle(userInfo));
-                    }
-                    catch (Exception exc)
-                    {
-                        Console.WriteLine($"Exception in UpdateWinName: {exc.Message}");
-                        await message.Channel.SendMessageAsync("Sorry, I was unable to record your Challonge Name. Please contact Yort and tell him what went wrong");
-                    }
-                }
-                else if (message.Content.ToLower().StartsWith("!twitch") || message.Content.ToLower().StartsWith(".twitch"))
-                {
-                    try
-                    {
-                        var sheetsService = _sheetService.AuthorizeGoogleSheets();
-                        string[] args = message.Content.Split(" ");
-                        UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, TwitchName = args[1].ToString() };
-                        await message.Channel.SendMessageAsync(_sheetService.SendUserInfoToGoogle(userInfo));
-                    }
-                    catch (Exception exc)
-                    {
-                        Console.WriteLine($"Exception in UpdateWinName: {exc.Message}");
-                        await message.Channel.SendMessageAsync("Sorry, I was unable to record your Twitch Name. Please contact Yort and tell him what went wrong");
-                    }
-                }
-                else
-                {
-                    await message.Channel.SendMessageAsync("Sorry, I don't understand that command. I'm not actually that smart, you know.");
-                }
-                return;
-            }
             if (message.Content == "!ping")
             {
                 await message.Channel.SendMessageAsync("Pong!");
             }
-            else if (message.Content.ToLower().StartsWith(SUBMIT_STRING) || message.Content.ToLower().StartsWith(".submit"))
+            else if (message.Content.ToLower().StartsWith(".submit") || message.Content.ToLower().StartsWith("!submit"))
             {
                 // first delete the original message
                 await message.Channel.DeleteMessageAsync(message);
-                var teamlink = message.Content.TrimStart(SUBMIT_STRING.ToCharArray()).TrimStart(".submit".ToCharArray()).Trim();
-                await message.Channel.SendMessageAsync(SubmitTeamLink(message.Channel.Name, teamlink, message));
+                 await message.Channel.SendMessageAsync(SubmitTeamLink(message, isDM));
             }
             else if (message.Content.ToLower().StartsWith(".format") || message.Content.ToLower().StartsWith("!format"))
             {
@@ -202,7 +124,8 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".count") || message.Content.ToLower().StartsWith("!count"))
             {
-                var playerList = _sheetService.GetCurrentPlayerCount(message.Channel.Name);
+                var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+                int playerList = dmEvent.GetCurrentPlayerCount();
                 await message.Channel.SendMessageAsync($"There are currently {playerList} humans registered (and no robots)");
             }
             else if (message.Content.ToLower().StartsWith(".list") || message.Content.ToLower().StartsWith("!list"))
@@ -216,58 +139,24 @@ namespace DiceMastersDiscordBot.Services
             else if (message.Content.ToLower().StartsWith(".here") || message.Content.ToLower().StartsWith("!here"))
             {
                 EventUserInput eventUserInput = new EventUserInput() { DiscordName = message.Author.Username, EventName = message.Channel.Name };
-                if (message.Channel.Name == _settings.GetOneOffChannelName())
-                {
-                    var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
-                    if (string.IsNullOrEmpty(userInfo.ChallongeName))
-                    {
-                        await message.Channel.SendMessageAsync($"Cannot check in Discord user {message.Author.Username} as there is no mapped Challonge ID. Please use `.challonge mychallongeusername` to tell the {_settings.GetBotName()} who you are in Challonge.");
-                    }
-                    else
-                    {
-                        var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
-                        var player = participants.SingleOrDefault(p => p.ChallongeUsername == userInfo.ChallongeName);
-                        if(player == null)
-                        {
-                            await message.Channel.SendMessageAsync($"There was an error checking in Challonge User {userInfo.ChallongeName} - they were not returned as registered for this tournament.");
-                        }
-                        else
-                        {
-                            var resultParticipant = await _challonge.CheckInParticipantAsync(player.Id.ToString(), _settings.GetOneOffChallongeId());
-                            if (resultParticipant.CheckedIn == true)
-                            {
-                                await message.Channel.SendMessageAsync($"Success! Challonge User {userInfo.ChallongeName} (Discord: {userInfo.DiscordName}) is checked in for the event!");
-                            }
-                            else
-                            {
-                                await message.Channel.SendMessageAsync($"There was an error checking in Challonge User {userInfo.ChallongeName} - please check in manually at Challonge.com");
-                            }
-                        }
-                    }
 
-                }
-                else
-                {
-                    if (_sheetService.MarkPlayerHere(eventUserInput))
-                    {
-                        await message.Channel.SendMessageAsync($"Player {eventUserInput.DiscordName} marked as HERE in the spreadsheet");
-                    }
-                    else
-                    {
-                        await message.Channel.SendMessageAsync($"Sorry, could not mark {eventUserInput.DiscordName} as HERE as they were not found in the spreadsheet for this event.");
-                    }
-                }
+                var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+                var response = await dmEvent.MarkPlayerHereAsync(eventUserInput);
+                await message.Channel.SendMessageAsync(response);
             }
             else if (message.Content.ToLower().StartsWith(".drop") || message.Content.ToLower().StartsWith("!drop"))
             {
                 EventUserInput eventUserInput = new EventUserInput() { DiscordName = message.Author.Username, EventName = message.Channel.Name };
-                if (_sheetService.MarkPlayerDropped(eventUserInput))
+
+                var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+                if (!dmEvent.UsesChallonge)
                 {
-                    await message.Channel.SendMessageAsync($"Player {eventUserInput.DiscordName} marked as DROPPED in the spreadsheet");
+                    var response = dmEvent.MarkPlayerDropped(eventUserInput);
+                    await message.Channel.SendMessageAsync(response);
                 }
                 else
                 {
-                    await message.Channel.SendMessageAsync($"Sorry, could not mark {eventUserInput.DiscordName} as DROPPED as they were not found in the spreadsheet for this event.");
+                    await message.Channel.SendMessageAsync($"Sorry, this event uses Challonge. You must drop yourself from the Challonge event manually");
                 }
             }
             else if (message.Content.ToLower().StartsWith(".teams"))
@@ -286,7 +175,6 @@ namespace DiceMastersDiscordBot.Services
             {
                 try
                 {
-                    var sheetsService = _sheetService.AuthorizeGoogleSheets();
                     string[] args = message.Content.Split(" ");
                     UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, WINName = args[1].ToString() };
                     await message.Channel.SendMessageAsync(_sheetService.SendUserInfoToGoogle(userInfo));
@@ -302,14 +190,13 @@ namespace DiceMastersDiscordBot.Services
             {
                 try
                 {
-                    var sheetsService = _sheetService.AuthorizeGoogleSheets();
                     string[] args = message.Content.Split(" ");
                     UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, ChallongeName = args[1].ToString() };
                     await message.Channel.SendMessageAsync(_sheetService.SendUserInfoToGoogle(userInfo));
                 }
                 catch (Exception exc)
                 {
-                    Console.WriteLine($"Exception in UpdateWinName: {exc.Message}");
+                    Console.WriteLine($"Exception in UpdateChallongeName: {exc.Message}");
                     await message.Channel.SendMessageAsync("Sorry, I was unable to record your Challonge Name. Please contact Yort and tell him what went wrong");
                 }
             }
@@ -317,14 +204,13 @@ namespace DiceMastersDiscordBot.Services
             {
                 try
                 {
-                    var sheetsService = _sheetService.AuthorizeGoogleSheets();
                     string[] args = message.Content.Split(" ");
                     UserInfo userInfo = new UserInfo() { DiscordName = message.Author.Username, TwitchName = args[1].ToString() };
                     await message.Channel.SendMessageAsync(_sheetService.SendUserInfoToGoogle(userInfo));
                 }
                 catch (Exception exc)
                 {
-                    Console.WriteLine($"Exception in UpdateWinName: {exc.Message}");
+                    Console.WriteLine($"Exception in UpdateTwitchName: {exc.Message}");
                     await message.Channel.SendMessageAsync("Sorry, I was unable to record your Twitch Name. Please contact Yort and tell him what went wrong");
                 }
             }
@@ -334,17 +220,21 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.StartsWith("!test"))
             {
-                var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
-                _logger.LogDebug($"{participants.Count}");
+                //var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
+                //_logger.LogDebug($"{participants.Count}");
             }
         }
 
         private async Task RecordScore(SocketMessage message)
         {
-            if (message.Channel.Name == _settings.GetOneOffChannelName())
+            var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+            var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
+            if (dmEvent is StandaloneChallongeEvent)
             {
                 try
                 {
+                    // TODO
+                    string challongeTournamentName = dmManifest.ChallongeTournamentName;
 
                     var scoreChannel = _client.GetChannel(_settings.GetScoresChannelId()) as IMessageChannel;
                     //await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", ""));
@@ -368,12 +258,12 @@ namespace DiceMastersDiscordBot.Services
 
                         //await message.Channel.SendMessageAsync($"Attempting to report scores for Challonge users {firstPlayerInfo.ChallongeName} and {secondPlayerInfo.ChallongeName}...");
 
-                        var allPlayersChallongeInfo = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
+                        var allPlayersChallongeInfo = await _challonge.GetAllParticipantsAsync(challongeTournamentName);
                         var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername == firstPlayerInfo.ChallongeName);
                         //var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == firstPlayerInfo.ChallongeName);
                         var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername == secondPlayerInfo.ChallongeName);
                         //var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == secondPlayerInfo.ChallongeName);
-                        var allMatches = await _challonge.GetAllMatchesAsync(_settings.GetOneOffChallongeId());
+                        var allMatches = await _challonge.GetAllMatchesAsync(challongeTournamentName);
 
                         var openMatches = allMatches.Where(m => m.State == "open");
 
@@ -403,7 +293,7 @@ namespace DiceMastersDiscordBot.Services
                                 }
 
                                 var theMatch = possibleMatch.FirstOrDefault();
-                                var result = await _challonge.UpdateMatchAsync(_settings.GetOneOffChallongeId(), theMatch.Id.GetValueOrDefault(), playerOneScore, playerTwoScore);
+                                var result = await _challonge.UpdateMatchAsync(challongeTournamentName, theMatch.Id.GetValueOrDefault(), playerOneScore, playerTwoScore);
 
                                 var confirmedWinner = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
                                 var confirmedLoser = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.LoserId);
@@ -426,9 +316,6 @@ namespace DiceMastersDiscordBot.Services
                         {
                             // Because Challonge automatically populates the next bracket as soon as the last score is reported and then you can't change it
                             // don't autoreport the last score, instead send it to the TO to let them do manually
-                            ulong toDiscordUserId;
-                            ulong.TryParse(_settings.GetOneOffTODiscordID(), out toDiscordUserId);
-                            var toDiscordUser = _client.GetUser(toDiscordUserId);
                             string roundString = "?";
                             try
                             {
@@ -437,7 +324,13 @@ namespace DiceMastersDiscordBot.Services
                             }
                             catch { }
 
-                            await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
+                            foreach (var to in dmManifest.EventOrganizerIDList)
+                            {
+                                ulong toDiscordUserId;
+                                ulong.TryParse(to, out toDiscordUserId);
+                                var toDiscordUser = _client.GetUser(toDiscordUserId);
+                                await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
+                            }
                             await scoreChannel.SendMessageAsync("-----------------");
                         }
                     }
@@ -463,27 +356,31 @@ namespace DiceMastersDiscordBot.Services
 
         private async Task<bool> RegisterForChallonge(SocketMessage message)
         {
-            // first check if we have mapped Challonge info
             bool result = false;
             try
             {
-                var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
-                if (string.IsNullOrEmpty(userInfo.ChallongeName))
+                var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+                var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
+                if (dmEvent is StandaloneChallongeEvent)
                 {
-                    await message.Author.SendMessageAsync("Please submit your Challonge username info by typing\n `.challonge mychallongeusername`");
-                    return false;
-                }
-                else
-                {
-                    ParticipantVm challongeParticipant = new ParticipantVm();
-                    challongeParticipant.ChallongeUsername = userInfo.ChallongeName;
-                    challongeParticipant.Misc = $"Discord: {userInfo.DiscordName}";
-                    challongeParticipant.ParticipantName = userInfo.DiscordName;
-                    challongeParticipant.Seed = 1;
+                    var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
+                    if (string.IsNullOrEmpty(userInfo.ChallongeName))
+                    {
+                        await message.Author.SendMessageAsync("Please submit your Challonge username info by typing\n `.challonge mychallongeusername`");
+                        return false;
+                    }
+                    else
+                    {
+                        ParticipantVm challongeParticipant = new ParticipantVm();
+                        challongeParticipant.ChallongeUsername = userInfo.ChallongeName;
+                        challongeParticipant.Misc = $"Discord: {userInfo.DiscordName}";
+                        challongeParticipant.ParticipantName = userInfo.DiscordName;
+                        challongeParticipant.Seed = 1;
 
-                    var participantInfo = await _challonge.AddParticipantAsync(challongeParticipant, _settings.GetOneOffChallongeId());
-                    await message.Author.SendMessageAsync($"Challonge User {participantInfo.ChallongeUsername} added");
-                    result = true;
+                        var participantInfo = await _challonge.AddParticipantAsync(challongeParticipant, dmManifest.ChallongeTournamentName);
+                        await message.Author.SendMessageAsync($"Challonge User {participantInfo.ChallongeUsername} added");
+                        result = true;
+                    }
                 }
             }
             catch (Exception exc)
@@ -496,48 +393,30 @@ namespace DiceMastersDiscordBot.Services
 
         private string GetCurrentFormat(SocketMessage message)
         {
-            var homeSheet = _sheetService.GetHomeSheet(message.Channel.Name);
-
-            try
-            {
-                if (homeSheet == null) return "No information found for this week yet";
-
-                var nl = Environment.NewLine;
-                var eventName = homeSheet.EventName != null ? string.Format($"{homeSheet.EventName}{nl}") : string.Empty;
-                return $"{eventName}**{homeSheet.EventDate}**{nl}__Format__ - {homeSheet.FormatDescription}{nl}__Additional info:__{nl}{homeSheet.Info}";
-            }
-            catch (Exception exc)
-            {
-                Console.WriteLine($"Exception in GetCurrentFormat: {exc.Message}");
-                return $"Ooops! Something went wrong! - please contact Yort (bot)";
-            }
+            var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+            return dmEvent.GetFormat();
         }
 
-        private string SubmitTeamLink(string eventName, string teamlink, SocketMessage message)
+        private string SubmitTeamLink(SocketMessage message, bool  isDM)
         {
-            var sheetsService = _sheetService.AuthorizeGoogleSheets();
             EventUserInput eventUserInput = new EventUserInput();
             string response = string.Empty;
-            HomeSheet homeSheet = _sheetService.GetHomeSheet(eventName);
-            if (homeSheet == null) return "Sorry, there was an error getting the event info to submit to";
 
             eventUserInput.Here = DateTime.UtcNow.ToString();
             eventUserInput.DiscordName = message.Author.Username;
-            eventUserInput.TeamLink = teamlink;
-
-            if (message.Channel.Name == _settings.GetDiceFightChannelName())
+            if (isDM)
             {
-                var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
-                if (string.IsNullOrEmpty(userInfo.WINName))
-                {
-                    message.Author.SendMessageAsync($"You do not have a WIN name on file. Please submit your WIN login by typing:{Environment.NewLine}`.win mywinlogin`");
-                }
-                else
-                {
-                    eventUserInput.Misc = userInfo.WINName;
-                }
+                var args = System.Text.RegularExpressions.Regex.Split(message.Content, @"\s+");
+                var dmManifest = _currentEventList.FirstOrDefault(e => e.EventCode == args[1]);
+                eventUserInput.TeamLink = args[2].Trim('<').Trim('>');
             }
-            response = _sheetService.SendLinkToGoogle(sheetsService, homeSheet.SheetId, homeSheet.SheetName, eventUserInput);
+            else
+            {
+                eventUserInput.TeamLink = message.Content.TrimStart("!submit".ToCharArray()).TrimStart(".submit".ToCharArray()).Trim().Trim('<').Trim('>');
+            }
+
+            var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+            response = dmEvent.SubmitTeamLink(eventUserInput);
 
             if(string.IsNullOrEmpty(response))
             {
@@ -545,8 +424,7 @@ namespace DiceMastersDiscordBot.Services
             }
             else
             {
-                message.Author.SendMessageAsync($"The following team was successfully submitted for {eventName}");
-                message.Author.SendMessageAsync(teamlink);
+                message.Author.SendMessageAsync($"The following team was successfully submitted for {eventUserInput.EventName}{Environment.NewLine}{eventUserInput.TeamLink}");
             }
             return response;
         }
@@ -556,25 +434,23 @@ namespace DiceMastersDiscordBot.Services
         {
             try
             {
+                var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+                
                 StringBuilder playerListString = new StringBuilder();
-                if (message.Channel.Name == _settings.GetOneOffChannelName())
+                if(dmEvent.UsesChallonge)
                 {
                     await message.Channel.SendMessageAsync("Retrieving list of players registered in Challonge...");
-                    // return Challonge list
-                    List<UserInfo> userInfos = new List<UserInfo>();
-                    var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
-                    var alphaParticipants = participants.OrderBy(p => p.ChallongeUsername);
-                    playerListString.AppendLine($"There are currently {participants.Count} humans registered (and no robots):");
-                    foreach (var person in alphaParticipants)
+                    var participantList = dmEvent.GetCurrentPlayerList();
+                    playerListString.AppendLine($"There are currently {participantList.Count} humans registered (and no robots):");
+                    foreach (var player in participantList.OrderBy(p => p.ChallongeName))
                     {
-                        var newPerson = _sheetService.GetUserInfoFromChallonge(person.ChallongeUsername);
-                        if (newPerson == null || string.IsNullOrEmpty(newPerson.DiscordName))
+                        if (string.IsNullOrEmpty(player.DiscordName))
                         {
-                            playerListString.AppendLine(person.ChallongeUsername);
+                            playerListString.AppendLine(player.ChallongeName);
                         }
                         else
                         {
-                            playerListString.AppendLine($"{person.ChallongeUsername.PadRight(20)}  (Discord - {newPerson.DiscordName})");
+                            playerListString.AppendLine($"{player.ChallongeName.PadRight(20)}  (Discord - {player.DiscordName})");
                         }
                     }
                     playerListString.AppendLine("---");
@@ -585,9 +461,9 @@ namespace DiceMastersDiscordBot.Services
                 }
                 else
                 {
-                    var playerList = _sheetService.GetCurrentPlayerList(message.Channel.Name);
-                    playerListString.AppendLine($"There are currently {playerList.Count} humans registered (and no robots):");
-                    foreach (var player in playerList)
+                    var participantList = dmEvent.GetCurrentPlayerList();
+                    playerListString.AppendLine($"There are currently {participantList.Count} humans registered (and no robots):");
+                    foreach (var player in participantList.OrderBy(p => p.DiscordName))
                     {
                         playerListString.AppendLine(player.DiscordName);
                     }
