@@ -440,7 +440,7 @@ namespace DiceMastersDiscordBot.Services
                 if(dmEvent.UsesChallonge)
                 {
                     await message.Channel.SendMessageAsync("Retrieving list of players registered in Challonge...");
-                    var participantList = dmEvent.GetCurrentPlayerList();
+                    var participantList = await dmEvent.GetCurrentPlayerList();
                     playerListString.AppendLine($"There are currently {participantList.Count} humans registered (and no robots):");
                     foreach (var player in participantList.OrderBy(p => p.ChallongeName))
                     {
@@ -461,7 +461,7 @@ namespace DiceMastersDiscordBot.Services
                 }
                 else
                 {
-                    var participantList = dmEvent.GetCurrentPlayerList();
+                    var participantList = await dmEvent.GetCurrentPlayerList();
                     playerListString.AppendLine($"There are currently {participantList.Count} humans registered (and no robots):");
                     foreach (var player in participantList.OrderBy(p => p.DiscordName))
                     {

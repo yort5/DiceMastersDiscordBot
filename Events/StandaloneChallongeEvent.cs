@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DiceMastersDiscordBot.Entities;
@@ -11,6 +12,7 @@ namespace DiceMastersDiscordBot.Events
     public class StandaloneChallongeEvent : BaseDiceMastersEvent
     {
         private string _challongeTournamentName;
+
         public StandaloneChallongeEvent(ILoggerFactory loggerFactory,
                             IAppSettings appSettings,
                             DMSheetService dMSheetService,
@@ -66,6 +68,22 @@ namespace DiceMastersDiscordBot.Events
                 _logger.LogError(exc.Message);
             }
             return response;
+        }
+
+        public async override Task<List<UserInfo>> GetCurrentPlayerList()
+        {
+            var participantList = await _challonge.GetAllParticipantsAsync(_challongeTournamentName);
+            List<UserInfo> userList = new List<UserInfo>();
+            foreach(var player in participantList)
+            {
+                var user = _sheetService.GetUserInfoFromChallonge(player.ChallongeUsername);
+                if (user == null)
+                {
+                    user = new UserInfo() { ChallongeName = player.ChallongeUsername };
+                }
+                userList.Add(user);
+            }
+            return userList;
         }
     }
 }

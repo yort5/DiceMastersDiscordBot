@@ -81,9 +81,9 @@ namespace DiceMastersDiscordBot.Events
             return _sheetService.GetCurrentPlayerCount(_homeSheet, ChannelName);
         }
 
-        public virtual List<UserInfo> GetCurrentPlayerList()
+        public virtual async Task<List<UserInfo>> GetCurrentPlayerList()
         {
-            return _sheetService.GetCurrentPlayerList(_homeSheet, ChannelName);
+            return await Task.FromResult(_sheetService.GetCurrentPlayerList(_homeSheet, ChannelName));
         }
 
         public virtual string MarkPlayerDropped(EventUserInput eventUserInput)

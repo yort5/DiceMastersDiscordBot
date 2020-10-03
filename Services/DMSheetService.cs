@@ -396,25 +396,33 @@ namespace DiceMastersDiscordBot.Services
         internal UserInfo GetUserInfoFromDiscord(string username)
         {
             var sheetService = AuthorizeGoogleSheets();
-            return GetUserInfo(sheetService, username, 0);
+            var userInfo = GetUserInfo(sheetService, username, 0);
+            if (string.IsNullOrEmpty(userInfo.DiscordName)) { userInfo.DiscordName = username; } 
+            return userInfo;
         }
 
         internal UserInfo GetUserInfoFromWIN(string username)
         {
             var sheetService = AuthorizeGoogleSheets();
-            return GetUserInfo(sheetService, username, 1);
+            var userInfo = GetUserInfo(sheetService, username, 1);
+            if(string.IsNullOrEmpty(userInfo.WINName)) { userInfo.WINName = username; }
+            return userInfo;
         }
 
         internal UserInfo GetUserInfoFromChallonge(string username)
         {
             var sheetService = AuthorizeGoogleSheets();
-            return GetUserInfo(sheetService, username, 2);
+            var userInfo = GetUserInfo(sheetService, username, 2);
+            if (string.IsNullOrEmpty(userInfo.ChallongeName)) { userInfo.ChallongeName = username; }
+            return userInfo;
         }
 
         internal UserInfo GetUserInfoFromTwitch(string username)
         {
             var sheetService = AuthorizeGoogleSheets();
-            return GetUserInfo(sheetService, username, 3);
+            var userInfo = GetUserInfo(sheetService, username, 3);
+            if (string.IsNullOrEmpty(userInfo.TwitchName)) { userInfo.TwitchName = username; }
+            return userInfo;
         }
 
         private UserInfo GetUserInfo(SheetsService sheetsService, string name, int nameIndex)
