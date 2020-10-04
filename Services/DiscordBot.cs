@@ -236,8 +236,11 @@ namespace DiceMastersDiscordBot.Services
                     // TODO
                     string challongeTournamentName = dmManifest.ChallongeTournamentName;
 
-                    var scoreChannel = _client.GetChannel(_settings.GetScoresChannelId()) as IMessageChannel;
-                    //await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", ""));
+                    var scoreChannel = _client.GetChannel(dmManifest.ScoreKeeperChannelId) as IMessageChannel;
+                    if (scoreChannel != null)
+                    {
+                        await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", ""));
+                    }
 
                     var argOld = message.Content.Split(" ");
 
@@ -337,7 +340,10 @@ namespace DiceMastersDiscordBot.Services
                                 var toDiscordUser = _client.GetUser(toDiscordUserId);
                                 await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
                             }
-                            await scoreChannel.SendMessageAsync("-----------------");
+                            if (scoreChannel != null)
+                            {
+                                await scoreChannel.SendMessageAsync("-----------------");
+                            }
                         }
                     }
                     else

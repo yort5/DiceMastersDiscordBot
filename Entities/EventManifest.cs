@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Identity;
 
 namespace DiceMastersDiscordBot.Entities
 {
@@ -10,5 +11,6 @@ namespace DiceMastersDiscordBot.Entities
         public string EventCode;
         public List<string> EventOrganizerIDList = new List<string>();
         public string ChallongeTournamentName;
+        public ulong ScoreKeeperChannelId;
     }
 }

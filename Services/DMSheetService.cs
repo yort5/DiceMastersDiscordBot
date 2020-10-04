@@ -130,7 +130,7 @@ namespace DiceMastersDiscordBot.Services
             try
             {
                 // Define request parameters.
-                var range = $"DiscordEventSheet!{_settings.GetColumnSpan()}";
+                var range = $"DiscordEventSheet!A:F";
 
                 // load the data
                 var sheetRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
@@ -147,7 +147,7 @@ namespace DiceMastersDiscordBot.Services
                             EventName = (record.Count >= 1 && record[0] != null) ? record[0].ToString() : string.Empty,
                             EventSheetId = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty,
                             EventCode = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty,
-                            ChallongeTournamentName = (record.Count >= 5 && record[4] != null) ? record[4].ToString() : string.Empty
+                            ChallongeTournamentName = (record.Count >= 5 && record[4] != null) ? record[4].ToString() : string.Empty,
                         };
                         if(record.Count >= 4 && record[3] != null)
                         {
@@ -157,6 +157,10 @@ namespace DiceMastersDiscordBot.Services
                             {
                                 eventManifest.EventOrganizerIDList.Add(id.Trim());
                             }
+                        }
+                        if(record.Count >= 6 && record[5] != null)
+                        {
+                            ulong.TryParse(record[5].ToString(), out eventManifest.ScoreKeeperChannelId);
                         }
                         currentEvents.Add(eventManifest);
                     }
