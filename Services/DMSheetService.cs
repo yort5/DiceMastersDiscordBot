@@ -35,7 +35,7 @@ namespace DiceMastersDiscordBot.Services
             return;
         }
 
-        public SheetsService AuthorizeGoogleSheets()
+        private SheetsService AuthorizeGoogleSheets()
         {
             try
             {
@@ -68,10 +68,11 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
-        public string SendLinkToGoogle(SheetsService sheetsService, string SpreadsheetId, string sheet, EventUserInput eventUserInput)
+        public string SendLinkToGoogle(string SpreadsheetId, string sheet, EventUserInput eventUserInput)
         {
             try
             {
+                var sheetsService = AuthorizeGoogleSheets();
                 // Define request parameters.
                 var userName = eventUserInput.DiscordName;
                 var range = $"{sheet}!{_settings.GetColumnSpan()}";
@@ -122,6 +123,61 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
+        internal List<EventManifest> LoadEventManifests()
+        {
+            var sheetsService = AuthorizeGoogleSheets();
+            List<EventManifest> currentEvents = new List<EventManifest>();
+            try
+            {
+                // Define request parameters.
+                var range = $"DiscordEventSheet!A:F";
+
+                // load the data
+                var sheetRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+
+
+                foreach (var record in values)
+                {
+                    try
+                    {
+                        EventManifest eventManifest = new EventManifest
+                        {
+                            EventName = (record.Count >= 1 && record[0] != null) ? record[0].ToString() : string.Empty,
+                            EventSheetId = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty,
+                            EventCode = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty,
+                            ChallongeTournamentName = (record.Count >= 5 && record[4] != null) ? record[4].ToString() : string.Empty,
+                        };
+                        if(record.Count >= 4 && record[3] != null)
+                        {
+                            // probably a slicker way to do this but there's no time!
+                            var idList = record[3].ToString().Split(',').ToList();
+                            foreach(var id in idList)
+                            {
+                                eventManifest.EventOrganizerIDList.Add(id.Trim());
+                            }
+                        }
+                        if(record.Count >= 6 && record[5] != null)
+                        {
+                            ulong.TryParse(record[5].ToString(), out eventManifest.ScoreKeeperChannelId);
+                        }
+                        currentEvents.Add(eventManifest);
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception loading eventManifests: {exc.Message}");
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+            }
+            return currentEvents;
+
+        }
+
         //internal string GetFormatFromGoogle(SheetsService sheetsService, string SpreadsheetId, string sheet)
         //{
         //    try
@@ -145,26 +201,25 @@ namespace DiceMastersDiscordBot.Services
         //    return "There was an error trying to retrieve the format information";
         //}
 
-        internal int GetCurrentPlayerCount(string eventName)
+        internal int GetCurrentPlayerCount(HomeSheet homeSheet, string eventName)
         {
-            return GetCurrentPlayerList(eventName).Count();
+            return GetCurrentPlayerList(homeSheet, eventName).Count();
         }
 
-        internal bool MarkPlayerHere(EventUserInput eventUserInput)
+        internal bool MarkPlayerHere(EventUserInput eventUserInput, HomeSheet sheet)
         {
-            return MarkPlayer(eventUserInput, "HERE");
+            return MarkPlayer(eventUserInput, sheet, "HERE");
         }
-        internal bool MarkPlayerDropped(EventUserInput eventUserInput)
+        internal bool MarkPlayerDropped(EventUserInput eventUserInput, HomeSheet sheet)
         {
-            return MarkPlayer(eventUserInput, "DROPPED");
+            return MarkPlayer(eventUserInput, sheet, "DROPPED");
         }
 
-        internal bool MarkPlayer(EventUserInput eventUserInput, string status)
+        private bool MarkPlayer(EventUserInput eventUserInput, HomeSheet sheet, string status)
         {
             try
             {
                 var sheetService = AuthorizeGoogleSheets();
-                var sheet = GetHomeSheet(eventUserInput.EventName);
                 // Define request parameters.
                 var userName = eventUserInput.DiscordName;
                 var range = $"{sheet.SheetName}!{_settings.GetColumnSpan()}";
@@ -259,10 +314,9 @@ namespace DiceMastersDiscordBot.Services
             return "Not quite working yet";
         }
 
-        internal List<UserInfo> GetCurrentPlayerList(string eventName)
+        internal List<UserInfo> GetCurrentPlayerList(HomeSheet homesheet, string eventName)
         {
             var sheetsService = AuthorizeGoogleSheets();
-            HomeSheet homesheet = GetHomeSheet(eventName);
             int nameIndex = 1;
             List<UserInfo> currentPlayerList = new List<UserInfo>();
             try
@@ -294,35 +348,12 @@ namespace DiceMastersDiscordBot.Services
         }
 
         #region Helper Methods
-        internal HomeSheet GetHomeSheet(string channelName)
+        internal HomeSheet GetHomeSheet(string sheetId, string eventName)
         {
             var sheetsService = AuthorizeGoogleSheets();
             HomeSheet sheetInfo = new HomeSheet();
-
-            if (channelName == "weekly-dice-arena")
-            {
-                sheetInfo.SheetId = _settings.GetWDASheetId();
-                sheetInfo.SheetName = _settings.GetWDASheetName();
-            }
-            else if (channelName == "dice-fight")
-            {
-                sheetInfo.SheetId = _settings.GetDiceFightSheetId();
-                sheetInfo.SheetName = _settings.GetDiceFightSheetName();
-            }
-            else if (channelName == _settings.GetOneOffChannelName())
-            {
-                sheetInfo.SheetId = _settings.GetOneOffSheetId();
-                sheetInfo.SheetName = _settings.GetOneOffSheetName();
-            }
-            else if (channelName == "team-of-the-month")
-            {
-                sheetInfo.SheetId = _settings.GetTotMSheetId();
-                sheetInfo.SheetName = _settings.GetTotMSheetName();
-            }
-            else
-            {
-                return null;
-            }
+            sheetInfo.SheetId = sheetId;
+            sheetInfo.SheetName = eventName;
 
             try
             {
@@ -338,7 +369,7 @@ namespace DiceMastersDiscordBot.Services
                 catch
                 {
                     // no biggee if it isn't there, just use the channel name
-                    sheetInfo.EventName = channelName;
+                    sheetInfo.EventName = eventName;
                 }
 
                 foreach (var row in sheetResponse.Values)
@@ -369,25 +400,33 @@ namespace DiceMastersDiscordBot.Services
         internal UserInfo GetUserInfoFromDiscord(string username)
         {
             var sheetService = AuthorizeGoogleSheets();
-            return GetUserInfo(sheetService, username, 0);
+            var userInfo = GetUserInfo(sheetService, username, 0);
+            if (string.IsNullOrEmpty(userInfo.DiscordName)) { userInfo.DiscordName = username; } 
+            return userInfo;
         }
 
         internal UserInfo GetUserInfoFromWIN(string username)
         {
             var sheetService = AuthorizeGoogleSheets();
-            return GetUserInfo(sheetService, username, 1);
+            var userInfo = GetUserInfo(sheetService, username, 1);
+            if(string.IsNullOrEmpty(userInfo.WINName)) { userInfo.WINName = username; }
+            return userInfo;
         }
 
         internal UserInfo GetUserInfoFromChallonge(string username)
         {
             var sheetService = AuthorizeGoogleSheets();
-            return GetUserInfo(sheetService, username, 2);
+            var userInfo = GetUserInfo(sheetService, username, 2);
+            if (string.IsNullOrEmpty(userInfo.ChallongeName)) { userInfo.ChallongeName = username; }
+            return userInfo;
         }
 
         internal UserInfo GetUserInfoFromTwitch(string username)
         {
             var sheetService = AuthorizeGoogleSheets();
-            return GetUserInfo(sheetService, username, 3);
+            var userInfo = GetUserInfo(sheetService, username, 3);
+            if (string.IsNullOrEmpty(userInfo.TwitchName)) { userInfo.TwitchName = username; }
+            return userInfo;
         }
 
         private UserInfo GetUserInfo(SheetsService sheetsService, string name, int nameIndex)

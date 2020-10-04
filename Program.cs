@@ -8,6 +8,7 @@ using DiceMastersDiscordBot.Services;
 using DiceMastersDiscordBot.Entities;
 using Microsoft.Extensions.Configuration;
 using DiceMastersDiscordBot.Properties;
+using DiceMastersDiscordBot.Events;
 
 namespace DiceMastersDiscordBot
 {
@@ -29,13 +30,18 @@ namespace DiceMastersDiscordBot
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
+                    services.AddSingleton<IAppSettings, AppSettings>();
                     services.AddSingleton<DMSheetService>();
-                    services.AddHostedService<DiscordBot>();
+                    services.AddSingleton<DiceMastersEventFactory>();
+                    services.AddTransient<StandaloneChallongeEvent>()
+                        .AddTransient<IDiceMastersEvent, StandaloneChallongeEvent>(s => s.GetService<StandaloneChallongeEvent>());
+                    services.AddTransient<WeeklyDiceArenaEvent>()
+                        .AddTransient<IDiceMastersEvent, WeeklyDiceArenaEvent>(s => s.GetService<WeeklyDiceArenaEvent>());
                     services.AddHttpClient<ChallongeEvent>(c =>
                     {
                         c.BaseAddress = new Uri("https://api.challonge.com");
                     });
-                    services.AddSingleton<IAppSettings, AppSettings>();
+                    services.AddHostedService<DiscordBot>();
                     //services.AddHostedService<TwitchBot>();
                 })
                 // Only required if the service responds to requests.
