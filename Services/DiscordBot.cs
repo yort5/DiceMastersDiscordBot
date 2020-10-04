@@ -244,12 +244,17 @@ namespace DiceMastersDiscordBot.Services
                     var args = System.Text.RegularExpressions.Regex.Split(message.Content, @"\s+");
 
 
-                    if (args.Count() >= 5)
+                    if (args.Count() >= 4)
                     {
                         var firstPlayerArg = args[1];
+                        var matchDescription = args[2];
                         var secondPlayerArg = args[3];
-                        var score = args[4];
-
+                        var score = "1-0";
+                        if (matchDescription.ToLower() == "ties" || matchDescription.ToLower() == "tied") score = "1-1";
+                        if (args.Count() >= 5)
+                        {
+                            score = args[4];
+                        }
                         var firstPlayerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == firstPlayerArg);
                         var secondPlayerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == secondPlayerArg);
 
@@ -280,16 +285,17 @@ namespace DiceMastersDiscordBot.Services
                             {
                                 int playerOneScore = 0;
                                 int playerTwoScore = 0;
+                                string[] scoreSplit = score.Split('-');
 
                                 if (playerOneisOne)
                                 {
-                                    int.TryParse(score.First<char>().ToString(), out playerOneScore);
-                                    int.TryParse(score.Last<char>().ToString(), out playerTwoScore);
+                                    int.TryParse(scoreSplit[0], out playerOneScore);
+                                    int.TryParse(scoreSplit[1], out playerTwoScore);
                                 }
                                 else
                                 {
-                                    int.TryParse(score.First<char>().ToString(), out playerTwoScore);
-                                    int.TryParse(score.Last<char>().ToString(), out playerOneScore);
+                                    int.TryParse(scoreSplit[0], out playerTwoScore);
+                                    int.TryParse(scoreSplit[1], out playerOneScore);
                                 }
 
                                 var theMatch = possibleMatch.FirstOrDefault();
@@ -416,6 +422,7 @@ namespace DiceMastersDiscordBot.Services
             }
 
             var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+            eventUserInput.EventName = dmEvent.ChannelName;
             response = dmEvent.SubmitTeamLink(eventUserInput);
 
             if(string.IsNullOrEmpty(response))
