@@ -24,6 +24,8 @@ namespace DiceMastersDiscordBot.Events
                 diceMastersEvent = (IDiceMastersEvent)serviceProvider.GetService(typeof(DiceFightEvent));
             else if (manifest.EventCode == "TOTM")
                 diceMastersEvent = (IDiceMastersEvent)serviceProvider.GetService(typeof(TeamOfTheMonthEvent));
+            else if (manifest.EventCode == "DS")
+                diceMastersEvent = (IDiceMastersEvent)serviceProvider.GetService(typeof(DiceSocialEvent));
             else
                 diceMastersEvent = (IDiceMastersEvent)serviceProvider.GetService(typeof(StandaloneChallongeEvent));
 
