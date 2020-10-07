@@ -14,15 +14,19 @@ using DiceMastersDiscordBot.Events;
 using DiceMastersDiscordBot.Properties;
 using Discord;
 using Discord.Commands;
+using Discord.Net.Rest;
+using Discord.Rest;
 using Discord.WebSocket;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Util.Store;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TwitchLib.Api.Core.RateLimiter;
 
 namespace DiceMastersDiscordBot.Services
 {
@@ -161,7 +165,7 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".teams"))
             {
-                //await message.Channel.SendMessageAsync(_sheetService.ListTeams(message));
+                SendTeams(message);
             }
             else if (message.Content.ToLower().StartsWith(".register"))
             {
@@ -442,7 +446,6 @@ namespace DiceMastersDiscordBot.Services
             return response;
         }
 
-
         private async Task GetCurrentPlayerList(SocketMessage message)
         {
             try
@@ -488,6 +491,36 @@ namespace DiceMastersDiscordBot.Services
                 _logger.LogError($"Exception trying to get tournament list from Challonge: {exc.Message}");
                 await message.Channel.SendMessageAsync("Sorry, there was an issue getting the player list from Challonge.");
             }
+        }
+
+        private async Task<RestUserMessage> SendTeams(SocketMessage message)
+        {
+            var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+            var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
+
+            // check TO list
+            foreach(var authTo in dmManifest.EventOrganizerIDList)
+            {
+                // simple check 
+                if(message.Author.Id.ToString() == authTo)
+                {
+                    var teamList = dmEvent.GetTeamLists();
+                    if(teamList.Any())
+                    {
+                        StringBuilder teamListOutput = new StringBuilder();
+                        teamListOutput.AppendLine($"Here are the team lists for {dmManifest.EventName}:");
+                        foreach(var team in teamList)
+                        {
+                            teamListOutput.AppendLine($"{team.DiscordName}: {team.TeamLink}");
+                        }
+                        return await message.Channel.SendMessageAsync(teamListOutput.ToString());
+
+                    }
+                }
+            }
+
+            // no authorized TO found
+            return await message.Channel.SendMessageAsync("Sorry, you are not authorized to list teams for this event.");
         }
 
         //public async Task InstallCommands()

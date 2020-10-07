@@ -514,6 +514,44 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
+        public List<EventUserInput> GetTeams(HomeSheet homeSheet)
+        {
+            var sheetsService = AuthorizeGoogleSheets();
+            var range = $"{homeSheet.SheetName}!{_settings.GetColumnSpan()}";
+            var sheetRequest = sheetsService.Spreadsheets.Values.Get(homeSheet.SheetId, range);
+            var sheetResponse = sheetRequest.Execute();
+            List<EventUserInput> teamLists = new List<EventUserInput>();
+            try
+            {
+                foreach (var record in sheetResponse.Values)
+                {
+                    try
+                    {
+                        EventUserInput teamEntry = new EventUserInput
+                        {
+                            Here = (record.Count >= 1 && record[0] != null) ? record[0].ToString() : string.Empty,
+                            DiscordName = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty,
+                            TeamLink = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty,
+                            Misc = (record.Count >= 4 && record[3] != null) ? record[3].ToString() : string.Empty
+                        };
+                        if (!teamEntry.Here.ToLower().StartsWith("timestamp"))
+                        {
+                            teamLists.Add(teamEntry);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError($"Not a valid team row: {e.Message}");
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError($"Exception trying to find a UserInfo: {exc.Message}");
+            }
+            return teamLists;
+        }
+
         #endregion
     }
 }

@@ -17,6 +17,7 @@ namespace DiceMastersDiscordBot.Events
         public string GetFormat();
         public string SubmitTeamLink(EventUserInput eventUserInput);
         public int GetCurrentPlayerCount();
+        public List<EventUserInput> GetTeamLists();
         public Task<List<UserInfo>> GetCurrentPlayerList();
         public Task<string> MarkPlayerHereAsync(EventUserInput eventUserInput);
         public string MarkPlayerDropped(EventUserInput eventUserInput);

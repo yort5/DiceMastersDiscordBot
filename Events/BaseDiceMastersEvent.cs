@@ -114,5 +114,10 @@ namespace DiceMastersDiscordBot.Events
         {
             return _sheetService.SendLinkToGoogle(_homeSheet.SheetId, _homeSheet.SheetName, eventUserInput);
         }
+
+        public virtual List<EventUserInput> GetTeamLists()
+        {
+            return _sheetService.GetTeams(_homeSheet);
+        }
     }
 }

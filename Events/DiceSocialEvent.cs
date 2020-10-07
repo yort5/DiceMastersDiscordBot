@@ -10,7 +10,7 @@ namespace DiceMastersDiscordBot.Events
     public class DiceSocialEvent : BaseDiceMastersEvent
     {
 
-        public TeamOfTheMonthEvent(ILoggerFactory loggerFactory,
+        public DiceSocialEvent(ILoggerFactory loggerFactory,
                             IAppSettings appSettings,
                             DMSheetService dMSheetService,
                             ChallongeEvent challonge) : base(loggerFactory, appSettings, dMSheetService, challonge)
