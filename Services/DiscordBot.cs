@@ -175,6 +175,11 @@ namespace DiceMastersDiscordBot.Services
                 //    await message.Channel.SendMessageAsync($"Thanks {message.Author.Username}, you are registered for the event in Challonge!");
                 //}
             }
+            else if (message.Content.ToLower().StartsWith(".fellowship"))
+            {
+                await message.Channel.DeleteMessageAsync(message);
+                RecordFellowship(message);
+            }
             else if (message.Content.ToLower().StartsWith("!win") || message.Content.ToLower().StartsWith(".win"))
             {
                 try
@@ -337,10 +342,10 @@ namespace DiceMastersDiscordBot.Services
                             }
                             catch { }
 
-                            foreach (var to in dmManifest.EventOrganizerIDList)
+                            foreach (var toId in dmManifest.EventOrganizerIDList)
                             {
                                 ulong toDiscordUserId;
-                                ulong.TryParse(to, out toDiscordUserId);
+                                ulong.TryParse(toId, out toDiscordUserId);
                                 var toDiscordUser = _client.GetUser(toDiscordUserId);
                                 await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
                             }
@@ -521,6 +526,22 @@ namespace DiceMastersDiscordBot.Services
 
             // no authorized TO found
             return await message.Channel.SendMessageAsync("Sorry, you are not authorized to list teams for this event.");
+        }
+
+        async Task<IUserMessage> RecordFellowship(SocketMessage message)
+        {
+            var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+            var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
+
+            string fellowshipString = $"FELLOWSHIP {dmManifest.EventName}:{Environment.NewLine}User {message.Author.Username} votes for {message.Content.TrimStart(".fellowship".ToCharArray())}";
+            foreach (var toId in dmManifest.EventOrganizerIDList)
+            {
+                ulong toDiscordUserId;
+                ulong.TryParse(toId, out toDiscordUserId);
+                var toDiscordUser = _client.GetUser(toDiscordUserId);
+                await toDiscordUser.SendMessageAsync(fellowshipString);
+            }
+            return await message.Author.SendMessageAsync($"Fellowship vote for {dmManifest.EventName} recorded for: {message.Content.Trim(".fellowship".ToCharArray())}");
         }
 
         //public async Task InstallCommands()
