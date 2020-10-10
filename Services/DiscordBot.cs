@@ -338,7 +338,7 @@ namespace DiceMastersDiscordBot.Services
                         }
                         else
                         {
-                            await message.Channel.SendMessageAsync($"Reporting last match of the round for {firstPlayerInfo.DiscordName} and {secondPlayerInfo.DiscordName}, apparently a tie?");
+                            await message.Channel.SendMessageAsync($"Reporting last match of the round for {firstPlayerInfo.DiscordName} and {secondPlayerInfo.DiscordName} for Challonge reasons.");
                             // Because Challonge automatically populates the next bracket as soon as the last score is reported and then you can't change it
                             // don't autoreport the last score, instead send it to the TO to let them do manually
                             string roundString = "?";
