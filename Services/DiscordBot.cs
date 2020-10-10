@@ -238,6 +238,7 @@ namespace DiceMastersDiscordBot.Services
         {
             var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
             var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
+            string hackTheException = string.Empty;
             if (dmEvent is StandaloneChallongeEvent)
             {
                 try
@@ -298,6 +299,11 @@ namespace DiceMastersDiscordBot.Services
                                 int playerOneScore = 0;
                                 int playerTwoScore = 0;
                                 string[] scoreSplit = score.Split('-');
+                                if (scoreSplit.Length != 2)
+                                {
+                                    await message.Channel.SendMessageAsync($"Unable to parse the score: {score}. Reporting Challonge player {firstPlayerInfo.ChallongeName} as winner. Please contact TO if this is incorrect.");
+                                    scoreSplit = new string[] { "1", "0" };
+                                }
 
                                 if (playerOneisOne)
                                 {
@@ -322,7 +328,7 @@ namespace DiceMastersDiscordBot.Services
                                 }
                                 else
                                 {
-                                    await message.Channel.SendMessageAsync($"Reported for {firstPlayerInfo.DiscordName} and {secondPlayerInfo.DiscordName}, apparently a tie?");
+                                    await message.Channel.SendMessageAsync($"Reported for {firstPlayerInfo.DiscordName} and {secondPlayerInfo.DiscordName} to the tournament organizers to be entered manually in Challonge.");
                                 }
                             }
                             else
@@ -332,6 +338,7 @@ namespace DiceMastersDiscordBot.Services
                         }
                         else
                         {
+                            await message.Channel.SendMessageAsync($"Reporting last match of the round for {firstPlayerInfo.DiscordName} and {secondPlayerInfo.DiscordName}, apparently a tie?");
                             // Because Challonge automatically populates the next bracket as soon as the last score is reported and then you can't change it
                             // don't autoreport the last score, instead send it to the TO to let them do manually
                             string roundString = "?";
@@ -366,8 +373,21 @@ namespace DiceMastersDiscordBot.Services
                 catch (Exception exc)
                 {
                     _logger.LogError($"Exception reporting scores: {exc.Message}");
-                    await message.Channel.SendMessageAsync($"Aha! You've managed to trip the dreaded EXCEPTION. Don't get too excited, this is beta functionality, it's not that hard! TOs, please verify this score manually!");
+                    await message.Channel.SendMessageAsync($"Dangit, something done gone wrong. Mighta just been Challonge, don't you worry none. TOs, please verify this score manually!");
+                    hackTheException = exc.Message;
                 }
+                try
+                {
+                    // hacking this up because I don't have time to get actual logging working
+                    if (!string.IsNullOrEmpty(hackTheException))
+                    {
+                        ulong toDiscordUserId;
+                        ulong.TryParse(_settings.GetHackExceptionUser(), out toDiscordUserId);
+                        var toDiscordUser = _client.GetUser(toDiscordUserId);
+                        await toDiscordUser.SendMessageAsync($"Reporting exception in score submission:{Environment.NewLine}{hackTheException}");
+                    }
+                }
+                catch { }
             }
             else
             {
@@ -541,6 +561,7 @@ namespace DiceMastersDiscordBot.Services
                 var toDiscordUser = _client.GetUser(toDiscordUserId);
                 await toDiscordUser.SendMessageAsync(fellowshipString);
             }
+            await message.Channel.SendMessageAsync($"Thank you, {message.Author.Username}, your fellowship vote was sent!");
             return await message.Author.SendMessageAsync($"Fellowship vote for {dmManifest.EventName} recorded for: {message.Content.Trim(".fellowship".ToCharArray())}");
         }
 

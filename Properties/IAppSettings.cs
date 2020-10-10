@@ -17,5 +17,7 @@ namespace DiceMastersDiscordBot.Properties
         public string GetBotName();
         public string GetBotHelpString();
 
+        public string GetHackExceptionUser();
+
     }
 }

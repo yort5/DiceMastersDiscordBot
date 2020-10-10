@@ -83,5 +83,10 @@ namespace DiceMastersDiscordBot.Properties
             ulong.TryParse(_config["ScoresChannelId"], out channelId);
             return channelId;
         }
+
+        public string GetHackExceptionUser()
+        {
+            return _config["OneOffTODiscordID"];
+        }
     }
 }
