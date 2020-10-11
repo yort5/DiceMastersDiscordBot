@@ -268,11 +268,11 @@ namespace DiceMastersDiscordBot.Services
                         {
                             score = args[4];
                         }
-                        var firstPlayerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == firstPlayerArg);
-                        var secondPlayerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == secondPlayerArg);
 
-                        var firstPlayerInfo = _sheetService.GetUserInfoFromDiscord(firstPlayerDiscordUser != null ? firstPlayerDiscordUser.Username : firstPlayerArg);
-                        var secondPlayerInfo = _sheetService.GetUserInfoFromDiscord(secondPlayerDiscordUser != null ? secondPlayerDiscordUser.Username : secondPlayerArg);
+                        var firstPlayerInfo = GetUserFromMention(message, firstPlayerArg);
+                        var secondPlayerInfo = GetUserFromMention(message, secondPlayerArg);
+
+                        if (1 == 1) return;
 
                         //await message.Channel.SendMessageAsync($"Attempting to report scores for Challonge users {firstPlayerInfo.ChallongeName} and {secondPlayerInfo.ChallongeName}...");
 
@@ -570,6 +570,24 @@ namespace DiceMastersDiscordBot.Services
         //    _client.MessageReceived += CommandHandler;
         //    await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), null);
         //}
+
+        private UserInfo GetUserFromMention(SocketMessage message, string mentionUserString)
+        {
+            UserInfo userFromMention = new UserInfo();
+
+            var playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == mentionUserString);
+            // sometimes there is a ! in the mention string, sometimes there isn't? Not sure why, so just going to check both scenarios
+            if(playerDiscordUser == null)
+            {
+                var hackMentionString = mentionUserString.Replace("@", "@!");
+                playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == mentionUserString);
+            }
+
+            // hopefully if we are here we either have a SocketUser, or the string wasn't actually a Discord @mention but just the text of the username
+            userFromMention = _sheetService.GetUserInfoFromDiscord(playerDiscordUser != null ? playerDiscordUser.Username : mentionUserString.TrimStart('@'));
+
+            return userFromMention;
+        }
 
         private Task Log(LogMessage msg)
         {
