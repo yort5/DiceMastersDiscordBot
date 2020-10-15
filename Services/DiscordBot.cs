@@ -118,8 +118,11 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".submit") || message.Content.ToLower().StartsWith("!submit"))
             {
-                // first delete the original message
-                await message.Channel.DeleteMessageAsync(message);
+                if (!isDM)
+                {
+                    // if this is a public channel, first delete the original message
+                    await message.Channel.DeleteMessageAsync(message);
+                }
                  await message.Channel.SendMessageAsync(SubmitTeamLink(message, isDM));
             }
             else if (message.Content.ToLower().StartsWith(".format") || message.Content.ToLower().StartsWith("!format"))
@@ -165,7 +168,7 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".teams"))
             {
-                SendTeams(message);
+                await SendTeams(message);
             }
             else if (message.Content.ToLower().StartsWith(".register"))
             {
@@ -271,8 +274,6 @@ namespace DiceMastersDiscordBot.Services
 
                         var firstPlayerInfo = GetUserFromMention(message, firstPlayerArg);
                         var secondPlayerInfo = GetUserFromMention(message, secondPlayerArg);
-
-                        if (1 == 1) return;
 
                         //await message.Channel.SendMessageAsync($"Attempting to report scores for Challonge users {firstPlayerInfo.ChallongeName} and {secondPlayerInfo.ChallongeName}...");
 
@@ -450,14 +451,15 @@ namespace DiceMastersDiscordBot.Services
                 var args = System.Text.RegularExpressions.Regex.Split(message.Content, @"\s+");
                 var dmManifest = _currentEventList.FirstOrDefault(e => e.EventCode == args[1]);
                 eventUserInput.TeamLink = args[2].Trim('<').Trim('>');
+                eventUserInput.EventName = dmManifest.EventName;
             }
             else
             {
                 eventUserInput.TeamLink = message.Content.TrimStart("!submit".ToCharArray()).TrimStart(".submit".ToCharArray()).Trim().Trim('<').Trim('>');
+                eventUserInput.EventName = message.Channel.Name;
             }
 
-            var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
-            eventUserInput.EventName = dmEvent.ChannelName;
+            var dmEvent = _eventFactory.GetDiceMastersEvent(eventUserInput.EventName, _currentEventList);
             response = dmEvent.SubmitTeamLink(eventUserInput);
 
             if(string.IsNullOrEmpty(response))
