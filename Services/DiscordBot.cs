@@ -172,16 +172,16 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".register"))
             {
-                await message.Channel.SendMessageAsync("This event is not enabled for auto-registration. Please register manually.");
-                //if(await RegisterForChallonge(message))
-                //{
-                //    await message.Channel.SendMessageAsync($"Thanks {message.Author.Username}, you are registered for the event in Challonge!");
-                //}
+                //await message.Channel.SendMessageAsync("This event is not enabled for auto-registration. Please register manually.");
+                if(await RegisterForEvent(message))
+                {
+                    await message.Channel.SendMessageAsync($"Thanks {message.Author.Username}, you are registered for the event!");
+                }
             }
             else if (message.Content.ToLower().StartsWith(".fellowship"))
             {
                 await message.Channel.DeleteMessageAsync(message);
-                RecordFellowship(message);
+                await RecordFellowship(message);
             }
             else if (message.Content.ToLower().StartsWith("!win") || message.Content.ToLower().StartsWith(".win"))
             {
@@ -396,7 +396,7 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
-        private async Task<bool> RegisterForChallonge(SocketMessage message)
+        private async Task<bool> RegisterForEvent(SocketMessage message)
         {
             bool result = false;
             try
@@ -422,6 +422,28 @@ namespace DiceMastersDiscordBot.Services
                         var participantInfo = await _challonge.AddParticipantAsync(challongeParticipant, dmManifest.ChallongeTournamentName);
                         await message.Author.SendMessageAsync($"Challonge User {participantInfo.ChallongeUsername} added");
                         result = true;
+                    }
+                }
+                else
+                {
+                    EventUserInput eventUserInput = new EventUserInput();
+                    string response = string.Empty;
+
+                    eventUserInput.Here = DateTime.UtcNow.ToString();
+                    eventUserInput.DiscordName = message.Author.Username;
+                    eventUserInput.TeamLink = "---";
+                    eventUserInput.EventName = message.Channel.Name;
+
+                    response = dmEvent.SubmitTeamLink(eventUserInput);
+
+                    if (string.IsNullOrEmpty(response))
+                    { 
+                        await message.Channel.SendMessageAsync($"Sorry, something went wrong with the registration.");
+                        result = false;
+                    }
+                    else
+                    {
+                        await message.Channel.SendMessageAsync($"Buckle up, {message.Author.Username}: you are registered for {eventUserInput.EventName}!");
                     }
                 }
             }

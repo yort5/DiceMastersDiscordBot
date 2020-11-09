@@ -73,7 +73,7 @@ namespace DiceMastersDiscordBot.Events
             catch (Exception exc)
             {
                 Console.WriteLine($"Exception in GetCurrentFormat: {exc.Message}");
-                return $"Ooops! Something went wrong! - please contact Yort (bot)";
+                return $"Unable to determine format - most likely it hasn't been defined yet?";
             }
         }
         public virtual int GetCurrentPlayerCount()
