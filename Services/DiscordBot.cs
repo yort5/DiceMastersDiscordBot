@@ -22,9 +22,11 @@ using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Util.Store;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Logging;
 using TwitchLib.Api.Core.RateLimiter;
 
@@ -34,6 +36,7 @@ namespace DiceMastersDiscordBot.Services
     {
         private readonly ILogger _logger;
         private readonly IAppSettings _settings;
+        private readonly IWebHostEnvironment _environment;
         private DiscordSocketClient _client;
         private ChallongeEvent _challonge;
         private readonly DiceMastersEventFactory _eventFactory;
@@ -46,12 +49,14 @@ namespace DiceMastersDiscordBot.Services
 
         public DiscordBot(ILoggerFactory loggerFactory,
                             IAppSettings appSettings,
+                            IWebHostEnvironment environment,
                             DMSheetService dMSheetService,
                             DiceMastersEventFactory eventFactory,
                             ChallongeEvent challonge)
         {
             _logger = loggerFactory.CreateLogger<DiscordBot>();
             _settings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _sheetService = dMSheetService;
             _eventFactory = eventFactory;
             _challonge = challonge;
@@ -120,8 +125,11 @@ namespace DiceMastersDiscordBot.Services
             {
                 if (!isDM)
                 {
-                    // if this is a public channel, first delete the original message
-                    await message.Channel.DeleteMessageAsync(message);
+                    // if this is a public channel, first delete the original message, unless we are running in dev in which case we'd interfere with the Prod version
+                    if(!_environment.IsDevelopment())
+                    {
+                        await message.Channel.DeleteMessageAsync(message);
+                    }
                 }
                  await message.Channel.SendMessageAsync(SubmitTeamLink(message, isDM));
             }
@@ -472,7 +480,12 @@ namespace DiceMastersDiscordBot.Services
             {
                 var args = System.Text.RegularExpressions.Regex.Split(message.Content, @"\s+");
                 var dmManifest = _currentEventList.FirstOrDefault(e => e.EventCode == args[1]);
-                eventUserInput.TeamLink = args[2].Trim('<').Trim('>');
+                if(dmManifest == null)
+                {
+                    return "Sorry, I was unable to determine which tournament you were trying to submit a team for.";
+                }
+                var indexOfTheRest = message.Content.IndexOf(args[2]);
+                eventUserInput.TeamLink = message.Content.Substring(indexOfTheRest).Replace("<", "").Replace(">", "");
                 eventUserInput.EventName = dmManifest.EventName;
             }
             else

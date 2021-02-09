@@ -116,6 +116,20 @@ namespace DiceMastersDiscordBot.Entities
             return updatedMatch.Match;
         }
 
+        public async Task<List<Tournament>> GetTournamentAsync(string name, bool includeParticipants = false,
+            bool includeMatches = false)
+        {
+            var options = new TournamentOptions
+            {
+                IncludeParticipants = includeParticipants,
+                IncludeMatches = includeMatches
+            };
+
+            var tournaments = await GetAsync<List<TournamentResponse>>($"tournaments/{name}.json", options);
+            return tournaments.Select(t => t.Tournament).ToList();
+        }
+
+
 
 
 
@@ -133,6 +147,22 @@ namespace DiceMastersDiscordBot.Entities
         }
 
         public async Task<T> GetAsync<T>(string url, MatchOptions options)
+        {
+            if (options != null)
+            {
+                var requestParams = ToChallongeRequestParams(options);
+                url += $"?{requestParams}";
+            }
+
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/{url}");
+
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            return JsonConvert.DeserializeObject<T>(await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<T> GetAsync<T>(string url, TournamentOptions options)
         {
             if (options != null)
             {
@@ -204,6 +234,17 @@ namespace DiceMastersDiscordBot.Entities
         }
 
         private string ToChallongeRequestParams(MatchOptions options)
+        {
+            var properties = options.GetType().GetProperties();
+            var requestParams = properties
+                .Where(prop =>
+                    prop.GetValue(options) != null && Attribute.IsDefined(prop, typeof(ChallongeNameAttribute)))
+                .Select(prop => GetStringRequestParam(prop, options)).ToList();
+
+            return $"{string.Join("&", requestParams)}";
+        }
+
+        private string ToChallongeRequestParams(TournamentOptions options)
         {
             var properties = options.GetType().GetProperties();
             var requestParams = properties

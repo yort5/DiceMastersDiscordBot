@@ -43,6 +43,18 @@ namespace DiceMastersDiscordBot.Events
                 }
                 else
                 {
+                    // check that tournament has a check-in
+                    var tournament = await _challonge.GetTournamentAsync(_challongeTournamentName);
+                    if(tournament.Count > 1)
+                    {
+                        return $"Sorry, apparently there is more than one tournament named {_challongeTournamentName}?";
+                    }
+                    if(tournament.FirstOrDefault().CheckInDuration == null)
+                    {
+                        // check in via spreadsheet instead.
+                        
+                    }
+
                     var participants = await _challonge.GetAllParticipantsAsync(_challongeTournamentName);
                     var player = participants.SingleOrDefault(p => p.ChallongeUsername == userInfo.ChallongeName);
                     if (player == null)
