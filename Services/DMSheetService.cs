@@ -605,43 +605,20 @@ namespace DiceMastersDiscordBot.Services
             {
                 var sheetsService = AuthorizeGoogleSheets();
                 // Define request parameters.
-                var range = $"{MasterYouTubeSheetName}!C:C";
+                var range = $"{MasterYouTubeSheetName}!D:D";
 
                 var loadExistingRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
                 var existingRecords = loadExistingRequest.Execute();
-                //bool existingEntryFound = false;
-                //foreach (var record in existingRecords.Values)
-                //{
-                //    if (record.Contains(userName))
-                //    {
-                //        var index = existingRecords.Values.IndexOf(record);
-                //        range = $"{MasterUserSheetName}!A{index + 1}";
-                //        existingEntryFound = true;
-                //        break;
-                //    }
-                //}
 
                 var oblist = new List<object>()
                     { DateTime.Now };
                 var valueRange = new ValueRange();
                 valueRange.Values = new List<IList<object>> { oblist };
 
-                //if (existingEntryFound)
-                //{
-                    // Performing Update Operation...
-                    var updateRequest = sheetsService.Spreadsheets.Values.Update(valueRange, _settings.GetMasterSheetId(), range);
-                    updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
-                    var appendReponse = updateRequest.Execute();
-                //    return $"Thanks {userName}, your info was updated!";
-                //}
-                //else
-                //{
-                //    // Append the above record...
-                //    var appendRequest = sheetsService.Spreadsheets.Values.Append(valueRange, _settings.GetMasterSheetId(), range);
-                //    appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
-                //    var appendReponse = appendRequest.Execute();
-                //    return $"Thanks {userName}, your info was added!";
-                //}
+                // Performing Update Operation...
+                var updateRequest = sheetsService.Spreadsheets.Values.Update(valueRange, _settings.GetMasterSheetId(), range);
+                updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                var appendReponse = updateRequest.Execute();
             }
             catch (Exception exc)
             {
