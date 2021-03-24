@@ -23,16 +23,12 @@ namespace DiceMastersDiscordBot.Services
         private readonly IAppSettings _settings;
 
         private const string MasterUserSheetName = "UserSheet";
+        private const string MasterYouTubeSheetName = "YouTubeSubs";
 
         public DMSheetService(ILoggerFactory loggerFactory, IAppSettings appSettings)
         {
             _logger = loggerFactory.CreateLogger<DMSheetService>(); ;
             _settings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
-        }
-        public void CheckSheets()
-        {
-            _logger.LogDebug("Checking Sheets!");
-            return;
         }
 
         private SheetsService AuthorizeGoogleSheets()
@@ -550,6 +546,108 @@ namespace DiceMastersDiscordBot.Services
                 _logger.LogError($"Exception trying to find a UserInfo: {exc.Message}");
             }
             return teamLists;
+        }
+
+        internal List<YouTubeSubscription> LoadYouTubeInfo()
+        {
+            var sheetsService = AuthorizeGoogleSheets();
+            List<YouTubeSubscription> subscriptions = new List<YouTubeSubscription>();
+            try
+            {
+                // Define request parameters.
+                var range = $"{MasterYouTubeSheetName}!A:F";
+
+                // load the data
+                var sheetRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+
+                var lastUpdate = DateTime.MinValue;
+                foreach (var record in values)
+                {
+                    try
+                    {
+                        if (values.IndexOf(record) == 0)
+                        {
+                            // grab the last update from the header
+                            if(record.Count >=4 && record[3] != null)
+                            {
+                                DateTime.TryParse(record[3].ToString(), out lastUpdate);
+                            }
+                            continue;
+                        }
+                        YouTubeSubscription sub = new YouTubeSubscription
+                        {
+                            ChannelName = (record.Count >= 1 && record[0] != null) ? record[0].ToString() : string.Empty,
+                            ChannelId = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty,
+                            DateLastChecked = lastUpdate,
+                            //ChallongeTournamentName = (record.Count >= 5 && record[4] != null) ? record[4].ToString() : string.Empty,
+                        };
+                        subscriptions.Add(sub);
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception loading eventManifests: {exc.Message}");
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+            }
+            return subscriptions;
+
+        }
+
+        internal void UpdateYouTubeInfo()
+        {
+            try
+            {
+                var sheetsService = AuthorizeGoogleSheets();
+                // Define request parameters.
+                var range = $"{MasterYouTubeSheetName}!C:C";
+
+                var loadExistingRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+                var existingRecords = loadExistingRequest.Execute();
+                //bool existingEntryFound = false;
+                //foreach (var record in existingRecords.Values)
+                //{
+                //    if (record.Contains(userName))
+                //    {
+                //        var index = existingRecords.Values.IndexOf(record);
+                //        range = $"{MasterUserSheetName}!A{index + 1}";
+                //        existingEntryFound = true;
+                //        break;
+                //    }
+                //}
+
+                var oblist = new List<object>()
+                    { DateTime.Now };
+                var valueRange = new ValueRange();
+                valueRange.Values = new List<IList<object>> { oblist };
+
+                //if (existingEntryFound)
+                //{
+                    // Performing Update Operation...
+                    var updateRequest = sheetsService.Spreadsheets.Values.Update(valueRange, _settings.GetMasterSheetId(), range);
+                    updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                    var appendReponse = updateRequest.Execute();
+                //    return $"Thanks {userName}, your info was updated!";
+                //}
+                //else
+                //{
+                //    // Append the above record...
+                //    var appendRequest = sheetsService.Spreadsheets.Values.Append(valueRange, _settings.GetMasterSheetId(), range);
+                //    appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
+                //    var appendReponse = appendRequest.Execute();
+                //    return $"Thanks {userName}, your info was added!";
+                //}
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+                _logger.LogError($"Exceptin saving YouTube info: {exc.Message}");
+            }
         }
 
         #endregion

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -82,6 +83,21 @@ namespace DiceMastersDiscordBot.Properties
             ulong channelId = 0;
             ulong.TryParse(_config["ScoresChannelId"], out channelId);
             return channelId;
+        }
+
+        public List<ulong> GetMediaChannelIds()
+        {
+            List<ulong> mediaChannelIds = new List<ulong>();
+            string channelList = _config["MediaChannelIds"];
+            if(!string.IsNullOrEmpty(channelList))
+            {
+                foreach(var channelString in channelList.Split(','))
+                {
+                    ulong.TryParse(channelString, out ulong channelId);
+                    mediaChannelIds.Add(channelId);
+                }
+            }
+            return mediaChannelIds;
         }
 
         public string GetHackExceptionUser()

@@ -33,6 +33,7 @@ namespace DiceMastersDiscordBot
                     services.AddSingleton<IAppSettings, AppSettings>();
                     services.AddSingleton<DMSheetService>();
                     services.AddSingleton<DiceMastersEventFactory>();
+                    services.AddSingleton<YouTubeMonitorService>();
                     services.AddTransient<StandaloneChallongeEvent>()
                         .AddTransient<IDiceMastersEvent, StandaloneChallongeEvent>(s => s.GetService<StandaloneChallongeEvent>());
                     services.AddTransient<WeeklyDiceArenaEvent>()

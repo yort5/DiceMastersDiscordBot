@@ -8,19 +8,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Discord.Net" Version="2.3.0" />
-    <PackageReference Include="Google.Apis.Auth" Version="1.50.0" />
-    <PackageReference Include="Google.Apis.Core" Version="1.50.0" />
-    <PackageReference Include="Google.Apis.Sheets.v4" Version="1.50.0.2175" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="5.0.3" />
+    <PackageReference Include="Discord.Net" Version="2.3.1" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.51.0" />
+    <PackageReference Include="Google.Apis.Core" Version="1.51.0" />
+    <PackageReference Include="Google.Apis.Sheets.v4" Version="1.51.0.2259" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="5.0.4" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="4.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="4.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="5.0.1" />
-    <PackageReference Include="System.Drawing.Common" Version="5.0.1" />
+    <PackageReference Include="System.Drawing.Common" Version="5.0.2" />
     <PackageReference Include="TwitchLib" Version="3.2.0" />
     <PackageReference Include="ChallongeSharp" Version="0.0.6" />
-    <PackageReference Include="TimeZoneConverter" Version="3.3.0" />
+    <PackageReference Include="TimeZoneConverter" Version="3.4.0" />
+    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.51.0.2238" />
+    <PackageReference Include="System.ServiceModel.Syndication" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>

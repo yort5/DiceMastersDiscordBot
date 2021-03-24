@@ -37,21 +37,23 @@ namespace DiceMastersDiscordBot.Services
         private readonly ILogger _logger;
         private readonly IAppSettings _settings;
         private readonly IWebHostEnvironment _environment;
-        private DiscordSocketClient _client;
-        private ChallongeEvent _challonge;
+        private readonly DMSheetService _sheetService;
         private readonly DiceMastersEventFactory _eventFactory;
+        private YouTubeMonitorService _youTubeService;
+        private ChallongeEvent _challonge;
         //private CommandService _commands;
 
 
-        private readonly DMSheetService _sheetService;
         private List<EventManifest> _currentEventList = new List<EventManifest>();
 
+        private DiscordSocketClient _client;
 
         public DiscordBot(ILoggerFactory loggerFactory,
                             IAppSettings appSettings,
                             IWebHostEnvironment environment,
                             DMSheetService dMSheetService,
                             DiceMastersEventFactory eventFactory,
+                            YouTubeMonitorService youTubeService,
                             ChallongeEvent challonge)
         {
             _logger = loggerFactory.CreateLogger<DiscordBot>();
@@ -59,6 +61,7 @@ namespace DiceMastersDiscordBot.Services
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _sheetService = dMSheetService;
             _eventFactory = eventFactory;
+            _youTubeService = youTubeService;
             _challonge = challonge;
         }
 
@@ -89,12 +92,12 @@ namespace DiceMastersDiscordBot.Services
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    _logger.LogInformation("ServiceA is doing background work.");
+                    _logger.LogInformation("DiscordBot is doing background work.");
 
                     LoadCurrentEvents();
-                    _sheetService.CheckSheets();
+                    CheckYouTube();
 
-                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                    await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
                 }
             } catch (Exception exc)
             {
@@ -102,11 +105,6 @@ namespace DiceMastersDiscordBot.Services
             }
 
             _logger.LogInformation("ServiceA has stopped.");
-        }
-
-        private void LoadCurrentEvents()
-        {
-            _currentEventList = _sheetService.LoadEventManifests();
         }
 
         private async Task DiscordMessageReceived(SocketMessage message)
@@ -624,6 +622,26 @@ namespace DiceMastersDiscordBot.Services
             userFromMention = _sheetService.GetUserInfoFromDiscord(playerDiscordUser != null ? playerDiscordUser.Username : mentionUserString.TrimStart('@'));
 
             return userFromMention;
+        }
+
+        private void CheckYouTube()
+        {
+            var newVideos = _youTubeService.CheckForNewVideos();
+            foreach(var video in newVideos)
+            {
+                var messageString = $"Channel: {video.ChannelName}, Video: {video.VideoTitle}{Environment.NewLine}{video.VideoLink}";
+                foreach(var channelId in _settings.GetMediaChannelIds())
+                {
+                    var discordChannel = _client.GetChannel(channelId) as IMessageChannel;
+                    discordChannel.SendMessageAsync(messageString);
+                    Console.WriteLine(messageString);
+                }
+            }
+        }
+
+        private void LoadCurrentEvents()
+        {
+            _currentEventList = _sheetService.LoadEventManifests();
         }
 
         private Task Log(LogMessage msg)

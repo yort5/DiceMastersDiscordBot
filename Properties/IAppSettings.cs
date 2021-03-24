@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+
 namespace DiceMastersDiscordBot.Properties
 {
     public interface IAppSettings
@@ -12,6 +14,7 @@ namespace DiceMastersDiscordBot.Properties
        
         public string GetMasterSheetId();
         public ulong GetScoresChannelId();
+        public List<ulong> GetMediaChannelIds();
 
         public string GetColumnSpan();
         public string GetBotName();
