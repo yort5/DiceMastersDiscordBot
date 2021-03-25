@@ -68,7 +68,7 @@ namespace DiceMastersDiscordBot.Services
 
                         var playlistRequest = ytService.PlaylistItems.List("snippet,contentDetails");
                         playlistRequest.PlaylistId = channelInfo.ContentDetails.RelatedPlaylists.Uploads;
-                        playlistRequest.MaxResults = 20;
+                        playlistRequest.MaxResults = 10;
                         var playlistResponse = playlistRequest.Execute();
                         var diceMastersVideos = playlistResponse.Items.Where(p => p.Snippet.PublishedAt > sub.DateLastChecked).ToList();
                          foreach (var playlistItem in diceMastersVideos)
