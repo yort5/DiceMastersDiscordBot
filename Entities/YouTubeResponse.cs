@@ -17,6 +17,7 @@ namespace DiceMastersDiscordBot.Entities
             {
                 return @"https://www.youtube.com/watch?v=" + VideoId;
             }
-         }
+        }
+        public bool IsDiceMasters { get; set; }
     }
 }

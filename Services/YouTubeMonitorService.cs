@@ -79,22 +79,17 @@ namespace DiceMastersDiscordBot.Services
                             var videoResponse = videoRequest.Execute();
                             if (videoResponse.Items.FirstOrDefault().Snippet.Tags is null) continue;
                             var taggedItems = videoResponse.Items.FirstOrDefault().Snippet.Tags.Where(t => t.ToLower() == "dicemasters" || t.ToLower().Contains("dice masters")).ToList();
-                            if (taggedItems.Any())
+                            bool isDiceMasters = taggedItems.Any();
+                            Console.WriteLine($"{isDiceMasters}");
+                            YouTubeResponse ytr = new YouTubeResponse()
                             {
-                                Console.WriteLine("YES");
-                                YouTubeResponse ytr = new YouTubeResponse()
-                                {
-                                    ChannelName = sub.ChannelName,
-                                    VideoId = playlistItem.Snippet.ResourceId.VideoId,
-                                    VideoTitle = playlistItem.Snippet.Title,
-                                    VideoDescription = playlistItem.Snippet.Description
-                                };
-                                youTubeResponses.Add(ytr);
-                            }
-                            else
-                            {
-                                Console.WriteLine("NO");
-                            }
+                                ChannelName = sub.ChannelName,
+                                VideoId = playlistItem.Snippet.ResourceId.VideoId,
+                                VideoTitle = playlistItem.Snippet.Title,
+                                VideoDescription = playlistItem.Snippet.Description,
+                                IsDiceMasters = isDiceMasters
+                            };
+                            youTubeResponses.Add(ytr);
                         }
                     }
                     catch (Exception exc)

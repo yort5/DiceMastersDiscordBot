@@ -14,7 +14,8 @@ namespace DiceMastersDiscordBot.Properties
        
         public string GetMasterSheetId();
         public ulong GetScoresChannelId();
-        public List<ulong> GetMediaChannelIds();
+        public List<ulong> GetDiceMastersMediaChannelIds();
+        public List<ulong> GetNonDiceMastersMediaChannelIds();
 
         public string GetColumnSpan();
         public string GetBotName();

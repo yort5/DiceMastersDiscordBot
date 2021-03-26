@@ -85,13 +85,28 @@ namespace DiceMastersDiscordBot.Properties
             return channelId;
         }
 
-        public List<ulong> GetMediaChannelIds()
+        public List<ulong> GetDiceMastersMediaChannelIds()
         {
             List<ulong> mediaChannelIds = new List<ulong>();
-            string channelList = _config["MediaChannelIds"];
+            string channelList = _config["DiceMastersMediaChannelIds"];
             if(!string.IsNullOrEmpty(channelList))
             {
                 foreach(var channelString in channelList.Split(','))
+                {
+                    ulong.TryParse(channelString, out ulong channelId);
+                    mediaChannelIds.Add(channelId);
+                }
+            }
+            return mediaChannelIds;
+        }
+
+        public List<ulong> GetNonDiceMastersMediaChannelIds()
+        {
+            List<ulong> mediaChannelIds = new List<ulong>();
+            string channelList = _config["NonDiceMastersMediaChannelIds"];
+            if (!string.IsNullOrEmpty(channelList))
+            {
+                foreach (var channelString in channelList.Split(','))
                 {
                     ulong.TryParse(channelString, out ulong channelId);
                     mediaChannelIds.Add(channelId);

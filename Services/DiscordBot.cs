@@ -432,6 +432,7 @@ namespace DiceMastersDiscordBot.Services
                 }
                 else
                 {
+                    SubmitTeamLink(message, false);
                     EventUserInput eventUserInput = new EventUserInput();
                     string response = string.Empty;
 
@@ -488,7 +489,12 @@ namespace DiceMastersDiscordBot.Services
             }
             else
             {
-                eventUserInput.TeamLink = message.Content.TrimStart("!submit".ToCharArray()).TrimStart(".submit".ToCharArray()).Trim().Trim('<').Trim('>');
+                eventUserInput.TeamLink = message.Content
+                                            .TrimStart("!submit".ToCharArray())
+                                            .TrimStart(".submit".ToCharArray())
+                                            .TrimStart("!register".ToCharArray())
+                                            .TrimStart(".register".ToCharArray())
+                                            .Trim().Trim('<').Trim('>');
                 eventUserInput.EventName = message.Channel.Name;
             }
 
@@ -630,7 +636,8 @@ namespace DiceMastersDiscordBot.Services
             foreach(var video in newVideos)
             {
                 var messageString = $"Channel: {video.ChannelName}, Video: {video.VideoTitle}{Environment.NewLine}{video.VideoLink}";
-                foreach(var channelId in _settings.GetMediaChannelIds())
+                var channelsToPost = video.IsDiceMasters ? _settings.GetDiceMastersMediaChannelIds() : _settings.GetNonDiceMastersMediaChannelIds();
+                foreach(var channelId in channelsToPost)
                 {
                     var discordChannel = _client.GetChannel(channelId) as IMessageChannel;
                     discordChannel.SendMessageAsync(messageString);
