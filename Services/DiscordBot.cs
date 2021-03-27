@@ -299,11 +299,11 @@ namespace DiceMastersDiscordBot.Services
                         if (openMatches.Count() > 1)
                         {
                             bool playerOneisOne = true;
-                            var possibleMatch = allMatches.Where(m => m.Player1Id == firstPlayerChallongeInfo.Id && m.Player2Id == secondPlayerChallongeInfo.Id);
+                            var possibleMatch = allMatches.Where(m => m.Player1Id == firstPlayerChallongeInfo.Id && m.Player2Id == secondPlayerChallongeInfo.Id).ToList();
                             if (!possibleMatch.Any())
                             {
                                 playerOneisOne = false;
-                                possibleMatch = allMatches.Where(m => m.Player1Id == secondPlayerChallongeInfo.Id && m.Player2Id == firstPlayerChallongeInfo.Id);
+                                possibleMatch = allMatches.Where(m => m.Player1Id == secondPlayerChallongeInfo.Id && m.Player2Id == firstPlayerChallongeInfo.Id).ToList();
                             }
                             if (possibleMatch.Any() && possibleMatch.Count() == 1)
                             {
