@@ -175,7 +175,9 @@ namespace DiceMastersDiscordBot.Entities
             HttpResponseMessage response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
-            return JsonConvert.DeserializeObject<T>(await response.Content.ReadAsStringAsync());
+            string body = await response.Content.ReadAsStringAsync();
+
+            return JsonConvert.DeserializeObject<T>(body);
         }
 
 
@@ -185,8 +187,9 @@ namespace DiceMastersDiscordBot.Entities
 
             HttpResponseMessage response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
+            string body = await response.Content.ReadAsStringAsync();
 
-            return JsonConvert.DeserializeObject<T>(await response.Content.ReadAsStringAsync());
+            return JsonConvert.DeserializeObject<T>(body);
         }
 
         public async Task<T> PutAsync<T>(string url, MatchOptions content)

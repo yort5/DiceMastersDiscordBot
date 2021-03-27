@@ -250,6 +250,7 @@ namespace DiceMastersDiscordBot.Services
             string hackTheException = string.Empty;
             if (dmEvent is StandaloneChallongeEvent)
             {
+                string lastMark = "Start";
                 try
                 {
                     // TODO
@@ -258,11 +259,11 @@ namespace DiceMastersDiscordBot.Services
                     var scoreChannel = _client.GetChannel(dmManifest.ScoreKeeperChannelId) as IMessageChannel;
                     if (scoreChannel != null)
                     {
-                        await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", ""));
+                        await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", "").Replace("!report ", ""));
                     }
+                    lastMark = "ScoreChannel found";
 
                     var argOld = message.Content.Split(" ");
-
                     var args = System.Text.RegularExpressions.Regex.Split(message.Content, @"\s+");
 
 
@@ -278,6 +279,7 @@ namespace DiceMastersDiscordBot.Services
                             score = args[4];
                         }
 
+                        lastMark = "Scores processed, determine players";
                         var firstPlayerInfo = GetUserFromMention(message, firstPlayerArg);
                         var secondPlayerInfo = GetUserFromMention(message, secondPlayerArg);
 
@@ -288,10 +290,12 @@ namespace DiceMastersDiscordBot.Services
                         //var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == firstPlayerInfo.ChallongeName);
                         var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername == secondPlayerInfo.ChallongeName);
                         //var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == secondPlayerInfo.ChallongeName);
+                        lastMark = "Players sorted";
+
                         var allMatches = await _challonge.GetAllMatchesAsync(challongeTournamentName);
+                        var openMatches = allMatches.Where(m => m.State == "open").ToList();
 
-                        var openMatches = allMatches.Where(m => m.State == "open");
-
+                        lastMark = "Find open match";
                         if (openMatches.Count() > 1)
                         {
                             bool playerOneisOne = true;
@@ -323,8 +327,10 @@ namespace DiceMastersDiscordBot.Services
                                     int.TryParse(scoreSplit[1], out playerOneScore);
                                 }
 
+                                lastMark = "Found the match";
                                 var theMatch = possibleMatch.FirstOrDefault();
                                 var result = await _challonge.UpdateMatchAsync(challongeTournamentName, theMatch.Id.GetValueOrDefault(), playerOneScore, playerTwoScore);
+                                lastMark = "Reported the match";
 
                                 var confirmedWinner = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
                                 var confirmedLoser = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.LoserId);
@@ -337,6 +343,7 @@ namespace DiceMastersDiscordBot.Services
                                 {
                                     await message.Channel.SendMessageAsync($"Reported for {firstPlayerInfo.DiscordName} and {secondPlayerInfo.DiscordName} to the tournament organizers to be entered manually in Challonge.");
                                 }
+                                lastMark = "Winner and loser reported";
                             }
                             else
                             {
@@ -381,7 +388,7 @@ namespace DiceMastersDiscordBot.Services
                 {
                     _logger.LogError($"Exception reporting scores: {exc.Message}");
                     await message.Channel.SendMessageAsync($"Dangit, something done gone wrong. Mighta just been Challonge, don't you worry none. TOs, please verify this score manually!");
-                    hackTheException = exc.Message;
+                    hackTheException = $"{exc.Message}";
                 }
                 try
                 {
@@ -391,7 +398,7 @@ namespace DiceMastersDiscordBot.Services
                         ulong toDiscordUserId;
                         ulong.TryParse(_settings.GetHackExceptionUser(), out toDiscordUserId);
                         var toDiscordUser = _client.GetUser(toDiscordUserId);
-                        await toDiscordUser.SendMessageAsync($"Reporting exception in score submission:{Environment.NewLine}{hackTheException}");
+                        await toDiscordUser.SendMessageAsync($"Reporting exception in score submission:{Environment.NewLine}{lastMark}{Environment.NewLine}{hackTheException}");
                     }
                 }
                 catch { }
