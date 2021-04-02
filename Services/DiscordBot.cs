@@ -250,6 +250,7 @@ namespace DiceMastersDiscordBot.Services
             string hackTheException = string.Empty;
             if (dmEvent is StandaloneChallongeEvent)
             {
+                // yes, this is hacky, but trying to play and debug the bot at the same time. ;)
                 string lastMark = "Start";
                 try
                 {
@@ -259,7 +260,7 @@ namespace DiceMastersDiscordBot.Services
                     var scoreChannel = _client.GetChannel(dmManifest.ScoreKeeperChannelId) as IMessageChannel;
                     if (scoreChannel != null)
                     {
-                        await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", "").Replace("!report ", ""));
+                    //    await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", "").Replace("!report ", ""));
                     }
                     lastMark = "ScoreChannel found";
 
@@ -298,31 +299,39 @@ namespace DiceMastersDiscordBot.Services
                         lastMark = "Find open match";
                         if (openMatches.Count() > 1)
                         {
+                            lastMark = "More than one open match returned";
                             bool playerOneisOne = true;
                             var possibleMatch = allMatches.Where(m => m.Player1Id == firstPlayerChallongeInfo.Id && m.Player2Id == secondPlayerChallongeInfo.Id).ToList();
+                            lastMark = "1st possibleMatch";
                             if (!possibleMatch.Any())
                             {
+                                lastMark = "1st no possibleMatch";
                                 playerOneisOne = false;
                                 possibleMatch = allMatches.Where(m => m.Player1Id == secondPlayerChallongeInfo.Id && m.Player2Id == firstPlayerChallongeInfo.Id).ToList();
+                                lastMark = "2nd possibleMatch";
                             }
                             if (possibleMatch.Any() && possibleMatch.Count() == 1)
                             {
+                                lastMark = "one possible match found";
                                 int playerOneScore = 0;
                                 int playerTwoScore = 0;
                                 string[] scoreSplit = score.Split('-');
+                                lastMark = "split the score";
                                 if (scoreSplit.Length != 2)
                                 {
                                     await message.Channel.SendMessageAsync($"Unable to parse the score: {score}. Reporting Challonge player {firstPlayerInfo.ChallongeName} as winner. Please contact TO if this is incorrect.");
                                     scoreSplit = new string[] { "1", "0" };
                                 }
-
+                      
                                 if (playerOneisOne)
                                 {
+                                    lastMark = "playerOneisOne";
                                     int.TryParse(scoreSplit[0], out playerOneScore);
                                     int.TryParse(scoreSplit[1], out playerTwoScore);
                                 }
                                 else
                                 {
+                                    lastMark = "playerTwoIsOne";
                                     int.TryParse(scoreSplit[0], out playerTwoScore);
                                     int.TryParse(scoreSplit[1], out playerOneScore);
                                 }

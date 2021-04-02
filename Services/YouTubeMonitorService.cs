@@ -78,7 +78,10 @@ namespace DiceMastersDiscordBot.Services
                             videoRequest.Id = playlistItem.Snippet.ResourceId.VideoId;
                             var videoResponse = videoRequest.Execute();
                             if (videoResponse.Items.FirstOrDefault().Snippet.Tags is null) continue;
-                            var taggedItems = videoResponse.Items.FirstOrDefault().Snippet.Tags.Where(t => t.ToLower() == "dicemasters" || t.ToLower().Contains("dice masters")).ToList();
+                            var taggedItems = videoResponse.Items.FirstOrDefault().Snippet.Tags.Where(t =>
+                                                                                    t.ToLower() == "dicemasters"
+                                                                                    || t.ToLower().Contains("dicemasters")
+                                                                                    || t.ToLower().Contains("dice masters")).ToList();
                             bool isDiceMasters = taggedItems.Any();
                             Console.WriteLine($"{isDiceMasters}");
                             YouTubeResponse ytr = new YouTubeResponse()
