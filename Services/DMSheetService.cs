@@ -627,6 +627,33 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
+        internal void SendRallyInfo(RallyCoinPrice coinPrice)
+        {
+            try
+            {
+                var sheetsService = AuthorizeGoogleSheets();
+                // Define request parameters.
+                var range = $"CRIME!A:D";
+
+                var loadExistingRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetCrimeSheetId(), range);
+
+                var oblist = new List<object>()
+                    { coinPrice.priceInUSD, coinPrice.priceInRLY, DateTime.UtcNow };
+                var valueRange = new ValueRange();
+                valueRange.Values = new List<IList<object>> { oblist };
+
+                // Append the above record...
+                var appendRequest = sheetsService.Spreadsheets.Values.Append(valueRange, _settings.GetCrimeSheetId(), range);
+                appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
+                var appendReponse = appendRequest.Execute();
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+                _logger.LogError($"Exceptin saving YouTube info: {exc.Message}");
+            }
+        }
+
         #endregion
     }
 }

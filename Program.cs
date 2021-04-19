@@ -34,6 +34,7 @@ namespace DiceMastersDiscordBot
                     services.AddSingleton<DMSheetService>();
                     services.AddSingleton<DiceMastersEventFactory>();
                     services.AddSingleton<YouTubeMonitorService>();
+                    services.AddHttpClient();
                     services.AddTransient<StandaloneChallongeEvent>()
                         .AddTransient<IDiceMastersEvent, StandaloneChallongeEvent>(s => s.GetService<StandaloneChallongeEvent>());
                     services.AddTransient<WeeklyDiceArenaEvent>()
@@ -46,7 +47,8 @@ namespace DiceMastersDiscordBot
                     {
                         c.BaseAddress = new Uri("https://api.challonge.com");
                     });
-                    services.AddHostedService<DiscordBot>();
+                    //services.AddHostedService<DiscordBot>();
+                    services.AddHostedService<RallyMonitorService>();
                     //services.AddHostedService<TwitchBot>();
                 })
                 // Only required if the service responds to requests.
