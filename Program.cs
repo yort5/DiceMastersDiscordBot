@@ -47,7 +47,7 @@ namespace DiceMastersDiscordBot
                     {
                         c.BaseAddress = new Uri("https://api.challonge.com");
                     });
-                    //services.AddHostedService<DiscordBot>();
+                    services.AddHostedService<DiscordBot>();
                     services.AddHostedService<RallyMonitorService>();
                     //services.AddHostedService<TwitchBot>();
                 })

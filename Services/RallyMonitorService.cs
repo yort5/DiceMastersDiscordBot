@@ -62,14 +62,14 @@ namespace DiceMastersDiscordBot.Services
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    _logger.LogInformation("DiscordBot is doing background work.");
+                    _logger.LogInformation("RallyMonitorService is doing background work.");
 
                     var coinPrice = await CheckPricesAsync();
 
                     _sheetService.SendRallyInfo(coinPrice);
                     Console.WriteLine(coinPrice.priceInUSD);
 
-                    await Task.Delay(TimeSpan.FromMinutes(4), stoppingToken);
+                    await Task.Delay(TimeSpan.FromHours(4), stoppingToken);
                 }
             }
             catch (Exception exc)
@@ -77,7 +77,7 @@ namespace DiceMastersDiscordBot.Services
                 _logger.LogError(exc.Message);
             }
 
-            _logger.LogInformation("ServiceA has stopped.");
+            _logger.LogInformation("RallyMonitorService has stopped.");
         }
 
         private async Task<RallyCoinPrice> CheckPricesAsync()
