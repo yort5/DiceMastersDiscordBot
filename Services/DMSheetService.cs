@@ -633,7 +633,7 @@ namespace DiceMastersDiscordBot.Services
             {
                 var sheetsService = AuthorizeGoogleSheets();
                 // Define request parameters.
-                var range = $"CRIME!A:D";
+                var range = $"{coinPrice.symbol.ToUpper()}!A:D";
 
                 var loadExistingRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetCrimeSheetId(), range);
 

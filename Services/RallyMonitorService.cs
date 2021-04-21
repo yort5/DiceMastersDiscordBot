@@ -64,10 +64,11 @@ namespace DiceMastersDiscordBot.Services
                 {
                     _logger.LogInformation("RallyMonitorService is doing background work.");
 
-                    var coinPrice = await CheckPricesAsync();
+                    var crimePrice = await CheckCrimePricesAsync();
+                    var wallsPrice = await CheckWallsPricesAsync();
 
-                    _sheetService.SendRallyInfo(coinPrice);
-                    Console.WriteLine(coinPrice.priceInUSD);
+                    _sheetService.SendRallyInfo(crimePrice);
+                    _sheetService.SendRallyInfo(wallsPrice);
 
                     await Task.Delay(TimeSpan.FromHours(4), stoppingToken);
                 }
@@ -80,9 +81,20 @@ namespace DiceMastersDiscordBot.Services
             _logger.LogInformation("RallyMonitorService has stopped.");
         }
 
-        private async Task<RallyCoinPrice> CheckPricesAsync()
+        // yes, this is horrible. don't @ me
+        private async Task<RallyCoinPrice> CheckCrimePricesAsync()
         {
             var request = new HttpRequestMessage(HttpMethod.Get, @"https://api.rally.io/v1/creator_coins/crime/price");
+
+            HttpResponseMessage response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            return JsonSerializer.Deserialize<RallyCoinPrice>(await response.Content.ReadAsStringAsync());
+        }
+
+        private async Task<RallyCoinPrice> CheckWallsPricesAsync()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, @"https://api.rally.io/v1/creator_coins/walls/price");
 
             HttpResponseMessage response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
