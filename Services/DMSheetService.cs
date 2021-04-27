@@ -14,6 +14,7 @@ using System.Threading;
 using Google.Apis.Util.Store;
 using System.Linq;
 using DiceMastersDiscordBot.Properties;
+using System.Globalization;
 
 namespace DiceMastersDiscordBot.Services
 {
@@ -638,7 +639,7 @@ namespace DiceMastersDiscordBot.Services
                 var loadExistingRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetCrimeSheetId(), range);
 
                 var oblist = new List<object>()
-                    { coinPrice.priceInUSD, coinPrice.priceInRLY, DateTime.UtcNow };
+                    { coinPrice.priceInUSD, coinPrice.priceInRLY, DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture) };
                 var valueRange = new ValueRange();
                 valueRange.Values = new List<IList<object>> { oblist };
 
