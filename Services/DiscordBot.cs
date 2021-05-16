@@ -427,24 +427,25 @@ namespace DiceMastersDiscordBot.Services
                 var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
                 if (dmEvent is StandaloneChallongeEvent)
                 {
-                    var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
-                    if (string.IsNullOrEmpty(userInfo.ChallongeName))
-                    {
-                        await message.Author.SendMessageAsync("Please submit your Challonge username info by typing\n `.challonge mychallongeusername`");
-                        return false;
-                    }
-                    else
-                    {
-                        ParticipantVm challongeParticipant = new ParticipantVm();
-                        challongeParticipant.ChallongeUsername = userInfo.ChallongeName;
-                        challongeParticipant.Misc = $"Discord: {userInfo.DiscordName}";
-                        challongeParticipant.ParticipantName = userInfo.DiscordName;
-                        challongeParticipant.Seed = 1;
+                    await message.Channel.SendMessageAsync($"For this tournament, please register at Challonge.com via the link provided in `.format`.");
+                    // var userInfo = _sheetService.GetUserInfoFromDiscord(message.Author.Username);
+                    // if (string.IsNullOrEmpty(userInfo.ChallongeName))
+                    // {
+                    //     await message.Author.SendMessageAsync("Please submit your Challonge username info by typing\n `.challonge mychallongeusername`");
+                    //     return false;
+                    // }
+                    // else
+                    // {
+                    //     ParticipantVm challongeParticipant = new ParticipantVm();
+                    //     challongeParticipant.ChallongeUsername = userInfo.ChallongeName;
+                    //     challongeParticipant.Misc = $"Discord: {userInfo.DiscordName}";
+                    //     challongeParticipant.ParticipantName = userInfo.DiscordName;
+                    //     challongeParticipant.Seed = 1;
 
-                        var participantInfo = await _challonge.AddParticipantAsync(challongeParticipant, dmManifest.ChallongeTournamentName);
-                        await message.Author.SendMessageAsync($"Challonge User {participantInfo.ChallongeUsername} added");
-                        result = true;
-                    }
+                    //     var participantInfo = await _challonge.AddParticipantAsync(challongeParticipant, dmManifest.ChallongeTournamentName);
+                    //     await message.Author.SendMessageAsync($"Challonge User {participantInfo.ChallongeUsername} added");
+                    //     result = true;
+                    // }
                 }
                 else
                 {
