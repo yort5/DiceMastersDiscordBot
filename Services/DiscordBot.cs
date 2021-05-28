@@ -465,6 +465,7 @@ namespace DiceMastersDiscordBot.Services
             catch (Exception exc)
             {
                 result = false;
+                await message.Channel.SendMessageAsync($"Sorry, something went wrong with the registration. Possibly the event is ready yet?");
                 Console.Write(exc.Message);
             }
             return result;
