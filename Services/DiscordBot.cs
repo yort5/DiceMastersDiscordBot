@@ -449,16 +449,7 @@ namespace DiceMastersDiscordBot.Services
                 }
                 else
                 {
-                    SubmitTeamLink(message, false);
-                    EventUserInput eventUserInput = new EventUserInput();
-                    string response = string.Empty;
-
-                    eventUserInput.Here = DateTime.UtcNow.ToString();
-                    eventUserInput.DiscordName = message.Author.Username;
-                    eventUserInput.TeamLink = "---";
-                    eventUserInput.EventName = message.Channel.Name;
-
-                    response = dmEvent.SubmitTeamLink(eventUserInput);
+                    var response = SubmitTeamLink(message, false);
 
                     if (string.IsNullOrEmpty(response))
                     { 
@@ -467,7 +458,7 @@ namespace DiceMastersDiscordBot.Services
                     }
                     else
                     {
-                        await message.Channel.SendMessageAsync($"Buckle up, {message.Author.Username}: you are registered for {eventUserInput.EventName}!");
+                        await message.Channel.SendMessageAsync($"Buckle up, {message.Author.Username}: you are registered for {dmManifest.EventName}!");
                     }
                 }
             }
