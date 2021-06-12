@@ -260,7 +260,7 @@ namespace DiceMastersDiscordBot.Services
                     var scoreChannel = _client.GetChannel(dmManifest.ScoreKeeperChannelId) as IMessageChannel;
                     if (scoreChannel != null)
                     {
-                    //    await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", "").Replace("!report ", ""));
+                        await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", "").Replace("!report ", ""));
                     }
                     lastMark = "ScoreChannel found";
 
