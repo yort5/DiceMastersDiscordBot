@@ -287,9 +287,12 @@ namespace DiceMastersDiscordBot.Services
                         //await message.Channel.SendMessageAsync($"Attempting to report scores for Challonge users {firstPlayerInfo.ChallongeName} and {secondPlayerInfo.ChallongeName}...");
 
                         var allPlayersChallongeInfo = await _challonge.GetAllParticipantsAsync(challongeTournamentName);
-                        var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername == firstPlayerInfo.ChallongeName);
-                        //var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == firstPlayerInfo.ChallongeName);
-                        var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername == secondPlayerInfo.ChallongeName);
+                        var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername.ToLower() == firstPlayerInfo.ChallongeName.ToLower());
+                        if (firstPlayerChallongeInfo == null)
+                        {
+                            //firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == firstPlayerInfo.ChallongeName);
+                        }
+                        var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername.ToLower() == secondPlayerInfo.ChallongeName.ToLower());
                         //var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.Name == secondPlayerInfo.ChallongeName);
                         lastMark = "Players sorted";
 
