@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.ServiceModel.Syndication;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using ChallongeSharp.Models.ViewModels;
 using ChallongeSharp.Models.ViewModels.Types;
 using DiceMastersDiscordBot.Entities;
@@ -95,6 +97,7 @@ namespace DiceMastersDiscordBot.Services
                     _logger.LogInformation("DiscordBot is doing background work.");
 
                     LoadCurrentEvents();
+                    CheckRSSFeeds();
                     CheckYouTube();
 
                     await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
@@ -654,6 +657,43 @@ namespace DiceMastersDiscordBot.Services
                     var discordChannel = _client.GetChannel(channelId) as IMessageChannel;
                     discordChannel.SendMessageAsync(messageString);
                     Console.WriteLine(messageString);
+                }
+            }
+        }
+
+        private void CheckRSSFeeds()
+        {
+            var rssFeeds = _sheetService.LoadRSSFeedInfo();
+            foreach (var feed in rssFeeds)
+            {
+                if (!string.IsNullOrEmpty(feed.SiteUrl))
+                {
+                    try
+                    {
+                        XmlReader reader = XmlReader.Create(feed.SiteUrl);
+                        SyndicationFeed sFeed = SyndicationFeed.Load(reader);
+                        reader.Close();
+
+                        foreach (SyndicationItem item in sFeed.Items)
+                        {
+                            if (item.PublishDate.UtcDateTime > feed.DateLastChecked)
+                            {
+                                var links = string.Join(Environment.NewLine, item.Links.Select(l => l.Uri.ToString()));
+                                var messageString = $"Site {feed.SiteName} posted:{Environment.NewLine}{item.Summary.Text}{Environment.NewLine}{links}";
+
+                                foreach (var channelId in _settings.GetDiceMastersMediaChannelIds())
+                                {
+                                    var discordChannel = _client.GetChannel(channelId) as IMessageChannel;
+                                    discordChannel.SendMessageAsync(messageString);
+                                    Console.WriteLine(messageString);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception attempting to read an RSS feed: {exc.Message}");
+                    }
                 }
             }
         }
