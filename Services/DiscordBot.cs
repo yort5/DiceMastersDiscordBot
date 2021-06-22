@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.ServiceModel.Syndication;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
@@ -192,6 +193,10 @@ namespace DiceMastersDiscordBot.Services
                 await message.Channel.DeleteMessageAsync(message);
                 await RecordFellowship(message);
             }
+            else if (message.Content.ToLower().StartsWith(".card"))
+            {
+                await CardLookup(message);
+            }
             else if (message.Content.ToLower().StartsWith("!win") || message.Content.ToLower().StartsWith(".win"))
             {
                 try
@@ -243,6 +248,24 @@ namespace DiceMastersDiscordBot.Services
             {
                 //var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
                 //_logger.LogDebug($"{participants.Count}");
+            }
+        }
+
+        private async Task CardLookup(SocketMessage message)
+        {
+            try
+            {
+                var args = Regex.Split(message.Content, @"\s+");
+
+                var digits = new string(args[1].Where(s => char.IsDigit(s)).ToArray());
+                var letters = new string(args[1].Where(s => char.IsLetter(s)).ToArray());
+
+                var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
+                await message.Channel.SendMessageAsync(quickanddirty);
+            }
+            catch (Exception exc)
+            {
+                await message.Channel.SendMessageAsync("Sorry, unable to figure out that card");
             }
         }
 
@@ -679,7 +702,9 @@ namespace DiceMastersDiscordBot.Services
                             if (item.PublishDate.UtcDateTime > feed.DateLastChecked)
                             {
                                 var links = string.Join(Environment.NewLine, item.Links.Select(l => l.Uri.ToString()));
-                                var messageString = $"Site {feed.SiteName} posted:{Environment.NewLine}{item.Summary.Text}{Environment.NewLine}{links}";
+//                                var messageString = $"Site {feed.SiteName} posted:{Environment.NewLine}{item.Summary.Text}{Environment.NewLine}{links}";
+// need to clean up summary if we want to include it
+                                var messageString = $"Site {feed.SiteName} posted:{Environment.NewLine}{links}";
 
                                 foreach (var channelId in _settings.GetDiceMastersMediaChannelIds())
                                 {
@@ -696,6 +721,7 @@ namespace DiceMastersDiscordBot.Services
                     }
                 }
             }
+            _sheetService.UpdateRssFeedInfo();
         }
 
         private void LoadCurrentEvents()
