@@ -23,8 +23,6 @@ namespace DiceMastersDiscordBot.Services
         private HttpClient _httpClient;
         private readonly DMSheetService _sheetService;
 
-        private DiscordSocketClient _client;
-
         public RallyMonitorService(ILoggerFactory loggerFactory,
                             IAppSettings appSettings,
                             HttpClient httpClient,

@@ -145,7 +145,8 @@ namespace DiceMastersDiscordBot.Services
             {
                 await GetCurrentPlayerList(message);
             }
-            else if (message.Content.ToLower().StartsWith(".report") || message.Content.ToLower().StartsWith("!report"))
+            else if (message.Content.ToLower().StartsWith(".report") || message.Content.ToLower().StartsWith("!report")
+                        || message.Content.ToLower().StartsWith(".result") || message.Content.ToLower().StartsWith("!result"))
             {
                 await RecordScore(message);
             }
@@ -234,7 +235,14 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".help") || message.Content.ToLower().StartsWith("!help"))
             {
-                await message.Channel.SendMessageAsync(_settings.GetBotHelpString());
+                if(message.Content.ToLower().StartsWith(".help more") || message.Content.ToLower().StartsWith("!help more"))
+                {
+                    await message.Channel.SendMessageAsync(_settings.GetBotHelpMoreString());
+                }
+                else
+                {
+                    await message.Channel.SendMessageAsync(_settings.GetBotHelpString());
+                }
             }
             else if (message.Content.StartsWith("!test"))
             {
@@ -260,7 +268,7 @@ namespace DiceMastersDiscordBot.Services
                     var scoreChannel = _client.GetChannel(dmManifest.ScoreKeeperChannelId) as IMessageChannel;
                     if (scoreChannel != null)
                     {
-                        await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", "").Replace("!report ", ""));
+                        await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", "").Replace("!report ", "").Replace(".result ", "").Replace("!result ", ""));
                     }
                     lastMark = "ScoreChannel found";
 
@@ -377,10 +385,18 @@ namespace DiceMastersDiscordBot.Services
 
                             foreach (var toId in dmManifest.EventOrganizerIDList)
                             {
-                                ulong toDiscordUserId;
-                                ulong.TryParse(toId, out toDiscordUserId);
-                                var toDiscordUser = _client.GetUser(toDiscordUserId);
-                                await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
+                                try
+                                {
+                                    ulong toDiscordUserId;
+                                    ulong.TryParse(toId, out toDiscordUserId);
+                                    var toDiscordUser = _client.GetUser(toDiscordUserId);
+                                    await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
+                                }
+                                catch (Exception exc)
+                                {
+                                    // I suppose I could just check for null, but this way I catch everything
+                                    _logger.LogError($"Exception trying to report to TO: {exc.Message}");
+                                }
                             }
                             if (scoreChannel != null)
                             {

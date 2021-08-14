@@ -21,6 +21,7 @@ namespace DiceMastersDiscordBot.Properties
         public string GetColumnSpan();
         public string GetBotName();
         public string GetBotHelpString();
+        public string GetBotHelpMoreString();
 
         public string GetHackExceptionUser();
 
