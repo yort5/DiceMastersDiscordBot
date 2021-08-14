@@ -22,14 +22,18 @@ namespace DiceMastersDiscordBot.Services
     {
         private readonly ILogger _logger;
         private readonly IAppSettings _settings;
+        private readonly SheetsService _sheetService;
 
         private const string MasterUserSheetName = "UserSheet";
         private const string MasterYouTubeSheetName = "YouTubeSubs";
+        private const string MasterRSSFeedSheetName = "RSSFeeds";
 
         public DMSheetService(ILoggerFactory loggerFactory, IAppSettings appSettings)
         {
             _logger = loggerFactory.CreateLogger<DMSheetService>(); ;
             _settings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+
+            _sheetService = AuthorizeGoogleSheets();
         }
 
         private SheetsService AuthorizeGoogleSheets()
@@ -69,7 +73,6 @@ namespace DiceMastersDiscordBot.Services
         {
             try
             {
-                var sheetsService = AuthorizeGoogleSheets();
                 // Define request parameters.
                 var userName = eventUserInput.DiscordName;
                 var range = $"{sheet}!{_settings.GetColumnSpan()}";
@@ -77,7 +80,7 @@ namespace DiceMastersDiscordBot.Services
                 //userValue = userValue.TrimStart('<').TrimEnd('>');
 
                 // first check to see if this person already has a submission
-                var checkExistingRequest = sheetsService.Spreadsheets.Values.Get(SpreadsheetId, range);
+                var checkExistingRequest = _sheetService.Spreadsheets.Values.Get(SpreadsheetId, range);
                 var existingRecords = checkExistingRequest.Execute();
                 bool existingEntryFound = false;
                 foreach (var record in existingRecords.Values)
@@ -99,7 +102,7 @@ namespace DiceMastersDiscordBot.Services
                 if (existingEntryFound)
                 {
                     // Performing Update Operation...
-                    var updateRequest = sheetsService.Spreadsheets.Values.Update(valueRange, SpreadsheetId, range);
+                    var updateRequest = _sheetService.Spreadsheets.Values.Update(valueRange, SpreadsheetId, range);
                     updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                     var appendReponse = updateRequest.Execute();
                     return $"Thanks {userName}, your info was updated!";
@@ -107,7 +110,7 @@ namespace DiceMastersDiscordBot.Services
                 else
                 {
                     // Append the above record...
-                    var appendRequest = sheetsService.Spreadsheets.Values.Append(valueRange, SpreadsheetId, range);
+                    var appendRequest = _sheetService.Spreadsheets.Values.Append(valueRange, SpreadsheetId, range);
                     appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
                     var appendReponse = appendRequest.Execute();
                     return $"Thanks {userName}, your info was added!";
@@ -122,7 +125,6 @@ namespace DiceMastersDiscordBot.Services
 
         internal List<EventManifest> LoadEventManifests()
         {
-            var sheetsService = AuthorizeGoogleSheets();
             List<EventManifest> currentEvents = new List<EventManifest>();
             try
             {
@@ -130,7 +132,7 @@ namespace DiceMastersDiscordBot.Services
                 var range = $"DiscordEventSheet!A:F";
 
                 // load the data
-                var sheetRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+                var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
 
@@ -216,7 +218,6 @@ namespace DiceMastersDiscordBot.Services
         {
             try
             {
-                var sheetService = AuthorizeGoogleSheets();
                 // Define request parameters.
                 var userName = eventUserInput.DiscordName;
                 var range = $"{sheet.SheetName}!{_settings.GetColumnSpan()}";
@@ -224,7 +225,7 @@ namespace DiceMastersDiscordBot.Services
                 //userValue = userValue.TrimStart('<').TrimEnd('>');
 
                 // first check to see if this person already has a submission
-                var checkExistingRequest = sheetService.Spreadsheets.Values.Get(sheet.SheetId, range);
+                var checkExistingRequest = _sheetService.Spreadsheets.Values.Get(sheet.SheetId, range);
                 var existingRecords = checkExistingRequest.Execute();
                 foreach (var record in existingRecords.Values)
                 {
@@ -245,7 +246,7 @@ namespace DiceMastersDiscordBot.Services
                             valueRange.Values = new List<IList<object>> { oblist };
 
                             // Performing Update Operation...
-                            var updateRequest = sheetService.Spreadsheets.Values.Update(valueRange, sheet.SheetId, range);
+                            var updateRequest = _sheetService.Spreadsheets.Values.Update(valueRange, sheet.SheetId, range);
                             updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                             var appendReponse = updateRequest.Execute();
                             return true;
@@ -265,7 +266,6 @@ namespace DiceMastersDiscordBot.Services
         //{
         //    try
         //    {
-        //        var sheetService = AuthorizeGoogleSheets();
         //        var sheet = GetHomeSheet(eventUserInput.EventName);
         //        if (sheet == null) return "No information found for this event";
         //        if (sheet.AuthorizedUsers.Count == 0) return "No users are authorized for this action";
@@ -313,7 +313,6 @@ namespace DiceMastersDiscordBot.Services
 
         internal List<UserInfo> GetCurrentPlayerList(HomeSheet homesheet, string eventName)
         {
-            var sheetsService = AuthorizeGoogleSheets();
             int nameIndex = 1;
             List<UserInfo> currentPlayerList = new List<UserInfo>();
             try
@@ -322,7 +321,7 @@ namespace DiceMastersDiscordBot.Services
                 var range = $"{homesheet.SheetName}!{_settings.GetColumnSpan()}";
 
                 // load the data
-                var sheetRequest = sheetsService.Spreadsheets.Values.Get(homesheet.SheetId, range);
+                var sheetRequest = _sheetService.Spreadsheets.Values.Get(homesheet.SheetId, range);
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
 
@@ -347,7 +346,6 @@ namespace DiceMastersDiscordBot.Services
         #region Helper Methods
         internal HomeSheet GetHomeSheet(string sheetId, string eventName)
         {
-            var sheetsService = AuthorizeGoogleSheets();
             HomeSheet sheetInfo = new HomeSheet();
             sheetInfo.SheetId = sheetId;
             sheetInfo.SheetName = eventName;
@@ -355,7 +353,7 @@ namespace DiceMastersDiscordBot.Services
             try
             {
                 var range = $"HomeSheet!{_settings.GetColumnSpan()}";
-                var sheetRequest = sheetsService.Spreadsheets.Values.Get(sheetInfo.SheetId, range);
+                var sheetRequest = _sheetService.Spreadsheets.Values.Get(sheetInfo.SheetId, range);
                 var sheetResponse = sheetRequest.Execute();
 
                 
@@ -396,40 +394,36 @@ namespace DiceMastersDiscordBot.Services
 
         internal UserInfo GetUserInfoFromDiscord(string username)
         {
-            var sheetService = AuthorizeGoogleSheets();
-            var userInfo = GetUserInfo(sheetService, username, 0);
+            var userInfo = GetUserInfo(username, 0);
             if (string.IsNullOrEmpty(userInfo.DiscordName)) { userInfo.DiscordName = username; } 
             return userInfo;
         }
 
         internal UserInfo GetUserInfoFromWIN(string username)
         {
-            var sheetService = AuthorizeGoogleSheets();
-            var userInfo = GetUserInfo(sheetService, username, 1);
+            var userInfo = GetUserInfo(username, 1);
             if(string.IsNullOrEmpty(userInfo.WINName)) { userInfo.WINName = username; }
             return userInfo;
         }
 
         internal UserInfo GetUserInfoFromChallonge(string username)
         {
-            var sheetService = AuthorizeGoogleSheets();
-            var userInfo = GetUserInfo(sheetService, username, 2);
+            var userInfo = GetUserInfo(username, 2);
             if (string.IsNullOrEmpty(userInfo.ChallongeName)) { userInfo.ChallongeName = username; }
             return userInfo;
         }
 
         internal UserInfo GetUserInfoFromTwitch(string username)
         {
-            var sheetService = AuthorizeGoogleSheets();
-            var userInfo = GetUserInfo(sheetService, username, 3);
+            var userInfo = GetUserInfo(username, 3);
             if (string.IsNullOrEmpty(userInfo.TwitchName)) { userInfo.TwitchName = username; }
             return userInfo;
         }
 
-        private UserInfo GetUserInfo(SheetsService sheetsService, string name, int nameIndex)
+        private UserInfo GetUserInfo(string name, int nameIndex)
         {
             var range = $"{MasterUserSheetName}!A:D";
-            var sheetRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+            var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
             var sheetResponse = sheetRequest.Execute();
             UserInfo userInfo = new UserInfo();
             try
@@ -460,7 +454,6 @@ namespace DiceMastersDiscordBot.Services
         {
             try
             {
-                var sheetsService = AuthorizeGoogleSheets();
                 // Define request parameters.
                 var userName = userInfo.DiscordName;
                 var range = $"{MasterUserSheetName}!{_settings.GetColumnSpan()}";
@@ -468,7 +461,7 @@ namespace DiceMastersDiscordBot.Services
                 //userValue = userValue.TrimStart('<').TrimEnd('>');
 
                 // first check to see if this person already has a submission
-                var checkExistingRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+                var checkExistingRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
                 var existingRecords = checkExistingRequest.Execute();
                 bool existingEntryFound = false;
                 foreach (var record in existingRecords.Values)
@@ -490,7 +483,7 @@ namespace DiceMastersDiscordBot.Services
                 if (existingEntryFound)
                 {
                     // Performing Update Operation...
-                    var updateRequest = sheetsService.Spreadsheets.Values.Update(valueRange, _settings.GetMasterSheetId(), range);
+                    var updateRequest = _sheetService.Spreadsheets.Values.Update(valueRange, _settings.GetMasterSheetId(), range);
                     updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                     var appendReponse = updateRequest.Execute();
                     return $"Thanks {userName}, your info was updated!";
@@ -498,7 +491,7 @@ namespace DiceMastersDiscordBot.Services
                 else
                 {
                     // Append the above record...
-                    var appendRequest = sheetsService.Spreadsheets.Values.Append(valueRange, _settings.GetMasterSheetId(), range);
+                    var appendRequest = _sheetService.Spreadsheets.Values.Append(valueRange, _settings.GetMasterSheetId(), range);
                     appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
                     var appendReponse = appendRequest.Execute();
                     return $"Thanks {userName}, your info was added!";
@@ -513,9 +506,8 @@ namespace DiceMastersDiscordBot.Services
 
         public List<EventUserInput> GetTeams(HomeSheet homeSheet)
         {
-            var sheetsService = AuthorizeGoogleSheets();
             var range = $"{homeSheet.SheetName}!{_settings.GetColumnSpan()}";
-            var sheetRequest = sheetsService.Spreadsheets.Values.Get(homeSheet.SheetId, range);
+            var sheetRequest = _sheetService.Spreadsheets.Values.Get(homeSheet.SheetId, range);
             var sheetResponse = sheetRequest.Execute();
             List<EventUserInput> teamLists = new List<EventUserInput>();
             try
@@ -551,7 +543,6 @@ namespace DiceMastersDiscordBot.Services
 
         internal List<YouTubeSubscription> LoadYouTubeInfo()
         {
-            var sheetsService = AuthorizeGoogleSheets();
             List<YouTubeSubscription> subscriptions = new List<YouTubeSubscription>();
             try
             {
@@ -559,7 +550,7 @@ namespace DiceMastersDiscordBot.Services
                 var range = $"{MasterYouTubeSheetName}!A:F";
 
                 // load the data
-                var sheetRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+                var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
 
@@ -582,13 +573,61 @@ namespace DiceMastersDiscordBot.Services
                             ChannelName = (record.Count >= 1 && record[0] != null) ? record[0].ToString() : string.Empty,
                             ChannelId = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty,
                             DateLastChecked = lastUpdate,
-                            //ChallongeTournamentName = (record.Count >= 5 && record[4] != null) ? record[4].ToString() : string.Empty,
+                       };
+                        subscriptions.Add(sub);
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception loading YouTube subs: {exc.Message}");
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+            }
+            return subscriptions;
+
+        }
+        internal List<RssFeed> LoadRSSFeedInfo()
+        {
+            List<RssFeed> subscriptions = new List<RssFeed>();
+            try
+            {
+                // Define request parameters.
+                var range = $"{MasterRSSFeedSheetName}!A:F";
+
+                // load the data
+                var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+
+                var lastUpdate = DateTime.MinValue;
+                foreach (var record in values)
+                {
+                    try
+                    {
+                        if (values.IndexOf(record) == 0)
+                        {
+                            // grab the last update from the header
+                            if (record.Count >= 4 && record[3] != null)
+                            {
+                                DateTime.TryParse(record[3].ToString(), out lastUpdate);
+                            }
+                            continue;
+                        }
+
+                        RssFeed sub = new RssFeed
+                        {
+                            SiteName = (record.Count >= 1 && record[0] != null) ? record[0].ToString() : string.Empty,
+                            SiteUrl = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty,
+                            DateLastChecked = lastUpdate,
                         };
                         subscriptions.Add(sub);
                     }
                     catch (Exception exc)
                     {
-                        _logger.LogError($"Exception loading eventManifests: {exc.Message}");
+                        _logger.LogError($"Exception loading RSS Feeds: {exc.Message}");
                     }
                 }
             }
@@ -604,11 +643,10 @@ namespace DiceMastersDiscordBot.Services
         {
             try
             {
-                var sheetsService = AuthorizeGoogleSheets();
                 // Define request parameters.
                 var range = $"{MasterYouTubeSheetName}!D:D";
 
-                var loadExistingRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+                var loadExistingRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
                 var existingRecords = loadExistingRequest.Execute();
 
                 var oblist = new List<object>()
@@ -617,7 +655,7 @@ namespace DiceMastersDiscordBot.Services
                 valueRange.Values = new List<IList<object>> { oblist };
 
                 // Performing Update Operation...
-                var updateRequest = sheetsService.Spreadsheets.Values.Update(valueRange, _settings.GetMasterSheetId(), range);
+                var updateRequest = _sheetService.Spreadsheets.Values.Update(valueRange, _settings.GetMasterSheetId(), range);
                 updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
                 var appendReponse = updateRequest.Execute();
             }
@@ -628,15 +666,41 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
+        internal void UpdateRssFeedInfo()
+        {
+            try
+            {
+                // Define request parameters.
+                var range = $"{MasterRSSFeedSheetName}!D:D";
+
+                var loadExistingRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
+                var existingRecords = loadExistingRequest.Execute();
+
+                var oblist = new List<object>()
+                    { DateTime.Now };
+                var valueRange = new ValueRange();
+                valueRange.Values = new List<IList<object>> { oblist };
+
+                // Performing Update Operation...
+                var updateRequest = _sheetService.Spreadsheets.Values.Update(valueRange, _settings.GetMasterSheetId(), range);
+                updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                var appendReponse = updateRequest.Execute();
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+                _logger.LogError($"Exception saving RSS Feed info: {exc.Message}");
+            }
+        }
+
         internal void SendRallyInfo(RallyCoinPrice coinPrice)
         {
             try
             {
-                var sheetsService = AuthorizeGoogleSheets();
                 // Define request parameters.
                 var range = $"{coinPrice.symbol.ToUpper()}!A:D";
 
-                var loadExistingRequest = sheetsService.Spreadsheets.Values.Get(_settings.GetCrimeSheetId(), range);
+                var loadExistingRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetCrimeSheetId(), range);
 
                 var oblist = new List<object>()
                     { coinPrice.priceInUSD, coinPrice.priceInRLY, DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) };
@@ -644,7 +708,7 @@ namespace DiceMastersDiscordBot.Services
                 valueRange.Values = new List<IList<object>> { oblist };
 
                 // Append the above record...
-                var appendRequest = sheetsService.Spreadsheets.Values.Append(valueRange, _settings.GetCrimeSheetId(), range);
+                var appendRequest = _sheetService.Spreadsheets.Values.Append(valueRange, _settings.GetCrimeSheetId(), range);
                 appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
                 var appendReponse = appendRequest.Execute();
             }
