@@ -66,6 +66,7 @@ namespace DiceMastersDiscordBot.Events
         {
             try
             {
+                // TODO: check if there are any upcoming events and return those as well
                 var nl = Environment.NewLine;
                 var eventName = _homeSheet.EventName != null ? string.Format($"{_homeSheet.EventName}{nl}") : string.Empty;
                 return $"{eventName}**{_homeSheet.EventDate}**{nl}__Format__ - {_homeSheet.FormatDescription}{nl}__Additional info:__{nl}{_homeSheet.Info}";

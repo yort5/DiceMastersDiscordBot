@@ -7,6 +7,7 @@ namespace DiceMastersDiscordBot.Entities
 {
     public class HomeSheet
     {
+        // TODO: Add new model for the event information and a list for upcoming events
         public string EventName;
         public string SheetId;
         public string EventDate;

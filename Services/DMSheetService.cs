@@ -371,6 +371,7 @@ namespace DiceMastersDiscordBot.Services
                 {
                     if (row.Count >= 1 && row[0].ToString().ToLower() == sheetInfo.SheetName.ToLower())
                     {
+                        // TODO: add thing to get next rows into upcoming events
                         sheetInfo.EventDate = row[0] != null ? row[0].ToString() : string.Empty;
                         sheetInfo.SheetName = row[1] != null ? row[1].ToString() : string.Empty;
                         sheetInfo.FormatDescription = row.Count >= 3 ? row[2].ToString() : "No information for this event yet";
