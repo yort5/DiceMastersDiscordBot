@@ -62,14 +62,34 @@ namespace DiceMastersDiscordBot.Events
             _eventOrganizerDiscordIds = manifest.EventOrganizerIDList;
         }
 
-        public string GetFormat()
+        public string GetFormat(int numberEvents)
+        {
+            var eventsToGet = numberEvents > _homeSheet.UpcomingEvents.Count()
+                ? _homeSheet.UpcomingEvents.Count
+                : numberEvents;
+            var nl = Environment.NewLine;
+            var eventName = _homeSheet.EventName != null ? $"{_homeSheet.EventName}{nl}" : string.Empty;
+
+            var eventFormats = new List<string>() { GetFormatText(eventName, _homeSheet.EventDetails) };
+
+            if (_homeSheet.UpcomingEvents.Any() && eventsToGet > 0)
+            {
+                eventFormats.Add("---- Upcoming Events ----");
+                eventFormats.AddRange(_homeSheet.UpcomingEvents.Take(eventsToGet).Select(e => GetFormatText(eventName, e)));
+                return string.Join($"{nl}{nl}", eventFormats);
+            }
+            else
+            {
+                return eventFormats.Any() ? eventFormats.First() : "No Events Found";
+            }
+        }
+
+        private string GetFormatText(String eventName, EventDetails eventInfo)
         {
             try
             {
-                // TODO: check if there are any upcoming events and return those as well
                 var nl = Environment.NewLine;
-                var eventName = _homeSheet.EventName != null ? string.Format($"{_homeSheet.EventName}{nl}") : string.Empty;
-                return $"{eventName}**{_homeSheet.EventDate}**{nl}__Format__ - {_homeSheet.FormatDescription}{nl}__Additional info:__{nl}{_homeSheet.Info}";
+                return $"{eventName}**{eventInfo.EventDate}**{nl}__Format__ - {eventInfo.FormatDescription}{nl}__Additional info:__{nl}{eventInfo.Description}";
             }
             catch (Exception exc)
             {
@@ -77,6 +97,7 @@ namespace DiceMastersDiscordBot.Events
                 return $"Unable to determine format - most likely it hasn't been defined yet?";
             }
         }
+
         public virtual int GetCurrentPlayerCount()
         {
             return _sheetService.GetCurrentPlayerCount(_homeSheet, ChannelName);
@@ -89,7 +110,7 @@ namespace DiceMastersDiscordBot.Events
 
         public virtual string MarkPlayerDropped(EventUserInput eventUserInput)
         {
-            if(_sheetService.MarkPlayerDropped(eventUserInput, _homeSheet))
+            if (_sheetService.MarkPlayerDropped(eventUserInput, _homeSheet))
             {
                 return $"Player {eventUserInput.DiscordName} marked as DROPPED in the spreadsheet";
             }

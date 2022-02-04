@@ -4,12 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
-using System.ServiceModel.Syndication;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
 using ChallongeSharp.Models.ViewModels;
 using ChallongeSharp.Models.ViewModels.Types;
 using DiceMastersDiscordBot.Entities;
@@ -83,7 +80,7 @@ namespace DiceMastersDiscordBot.Services
 
                 //Initialize command handling.
                 _client.MessageReceived += DiscordMessageReceived;
-                //await InstallCommands();      
+                //await InstallCommands();
 
                 // Connect the bot to Discord
                 string token = _settings.GetDiscordToken();
@@ -98,12 +95,12 @@ namespace DiceMastersDiscordBot.Services
                     _logger.LogInformation("DiscordBot is doing background work.");
 
                     LoadCurrentEvents();
-                    CheckRSSFeeds();
                     CheckYouTube();
 
                     await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
                 }
-            } catch (Exception exc)
+            }
+            catch (Exception exc)
             {
                 _logger.LogError(exc.Message);
             }
@@ -113,7 +110,7 @@ namespace DiceMastersDiscordBot.Services
 
         private async Task DiscordMessageReceived(SocketMessage message)
         {
-            if(message.Author.IsBot) return;
+            if (message.Author.IsBot) return;
             if (!(message.Content.StartsWith(".") || message.Content.StartsWith("!"))) return;
 
             var dmchannelID = await message.Author.GetOrCreateDMChannelAsync();
@@ -128,12 +125,12 @@ namespace DiceMastersDiscordBot.Services
                 if (!isDM)
                 {
                     // if this is a public channel, first delete the original message, unless we are running in dev in which case we'd interfere with the Prod version
-                    if(!_environment.IsDevelopment())
+                    if (!_environment.IsDevelopment())
                     {
                         await message.Channel.DeleteMessageAsync(message);
                     }
                 }
-                 await message.Channel.SendMessageAsync(SubmitTeamLink(message, isDM));
+                await message.Channel.SendMessageAsync(SubmitTeamLink(message, isDM));
             }
             else if (message.Content.ToLower().StartsWith(".format") || message.Content.ToLower().StartsWith("!format"))
             {
@@ -150,7 +147,7 @@ namespace DiceMastersDiscordBot.Services
                 await GetCurrentPlayerList(message);
             }
             else if (message.Content.ToLower().StartsWith(".report") || message.Content.ToLower().StartsWith("!report")
-                       || message.Content.ToLower().StartsWith(".result") || message.Content.ToLower().StartsWith("!result"))
+                        || message.Content.ToLower().StartsWith(".result") || message.Content.ToLower().StartsWith("!result"))
             {
                 await RecordScore(message);
             }
@@ -184,7 +181,7 @@ namespace DiceMastersDiscordBot.Services
             else if (message.Content.ToLower().StartsWith(".register"))
             {
                 //await message.Channel.SendMessageAsync("This event is not enabled for auto-registration. Please register manually.");
-                if(await RegisterForEvent(message))
+                if (await RegisterForEvent(message))
                 {
                     await message.Channel.SendMessageAsync($"Thanks {message.Author.Username}, you are registered for the event!");
                 }
@@ -193,10 +190,6 @@ namespace DiceMastersDiscordBot.Services
             {
                 await message.Channel.DeleteMessageAsync(message);
                 await RecordFellowship(message);
-            }
-            else if (message.Content.ToLower().StartsWith(".card"))
-            {
-                await CardLookup(message);
             }
             else if (message.Content.ToLower().StartsWith("!win") || message.Content.ToLower().StartsWith(".win"))
             {
@@ -243,30 +236,19 @@ namespace DiceMastersDiscordBot.Services
             }
             else if (message.Content.ToLower().StartsWith(".help") || message.Content.ToLower().StartsWith("!help"))
             {
-                await message.Channel.SendMessageAsync(_settings.GetBotHelpString());
+                if (message.Content.ToLower().StartsWith(".help more") || message.Content.ToLower().StartsWith("!help more"))
+                {
+                    await message.Channel.SendMessageAsync(_settings.GetBotHelpMoreString());
+                }
+                else
+                {
+                    await message.Channel.SendMessageAsync(_settings.GetBotHelpString());
+                }
             }
             else if (message.Content.StartsWith("!test"))
             {
                 //var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
                 //_logger.LogDebug($"{participants.Count}");
-            }
-        }
-
-        private async Task CardLookup(SocketMessage message)
-        {
-            try
-            {
-                var args = Regex.Split(message.Content, @"\s+");
-
-                var digits = new string(args[1].Where(s => char.IsDigit(s)).ToArray());
-                var letters = new string(args[1].Where(s => char.IsLetter(s)).ToArray());
-
-                var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
-                await message.Channel.SendMessageAsync(quickanddirty);
-            }
-            catch (Exception exc)
-            {
-                await message.Channel.SendMessageAsync("Sorry, unable to figure out that card");
             }
         }
 
@@ -287,7 +269,7 @@ namespace DiceMastersDiscordBot.Services
                     var scoreChannel = _client.GetChannel(dmManifest.ScoreKeeperChannelId) as IMessageChannel;
                     if (scoreChannel != null)
                     {
-                        await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", "").Replace("!report ", ""));
+                        await scoreChannel.SendMessageAsync(message.Content.Replace(".report ", "").Replace("!report ", "").Replace(".result ", "").Replace("!result ", ""));
                     }
                     lastMark = "ScoreChannel found";
 
@@ -352,7 +334,7 @@ namespace DiceMastersDiscordBot.Services
                                     await message.Channel.SendMessageAsync($"Unable to parse the score: {score}. Reporting Challonge player {firstPlayerInfo.ChallongeName} as winner. Please contact TO if this is incorrect.");
                                     scoreSplit = new string[] { "1", "0" };
                                 }
-                      
+
                                 if (playerOneisOne)
                                 {
                                     lastMark = "playerOneisOne";
@@ -404,10 +386,18 @@ namespace DiceMastersDiscordBot.Services
 
                             foreach (var toId in dmManifest.EventOrganizerIDList)
                             {
-                                ulong toDiscordUserId;
-                                ulong.TryParse(toId, out toDiscordUserId);
-                                var toDiscordUser = _client.GetUser(toDiscordUserId);
-                                await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
+                                try
+                                {
+                                    ulong toDiscordUserId;
+                                    ulong.TryParse(toId, out toDiscordUserId);
+                                    var toDiscordUser = _client.GetUser(toDiscordUserId);
+                                    await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
+                                }
+                                catch (Exception exc)
+                                {
+                                    // I suppose I could just check for null, but this way I catch everything
+                                    _logger.LogError($"Exception trying to report to TO: {exc.Message}");
+                                }
                             }
                             if (scoreChannel != null)
                             {
@@ -479,15 +469,15 @@ namespace DiceMastersDiscordBot.Services
                 }
                 else
                 {
-                    // if this is a public channel, first delete the original message, unless we are running in dev in which case we'd interfere with the Prod version
                     if (!_environment.IsDevelopment())
                     {
                         await message.Channel.DeleteMessageAsync(message);
                     }
+
                     var response = SubmitTeamLink(message, false);
 
                     if (string.IsNullOrEmpty(response))
-                    { 
+                    {
                         await message.Channel.SendMessageAsync($"Sorry, something went wrong with the registration.");
                         result = false;
                     }
@@ -509,10 +499,12 @@ namespace DiceMastersDiscordBot.Services
         private string GetCurrentFormat(SocketMessage message)
         {
             var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
-            return dmEvent.GetFormat();
+            var numberEvents = 0;
+            int.TryParse(message.Content.Split(" ").LastOrDefault(), out numberEvents);
+            return dmEvent.GetFormat(numberEvents);
         }
 
-        private string SubmitTeamLink(SocketMessage message, bool  isDM)
+        private string SubmitTeamLink(SocketMessage message, bool isDM)
         {
             EventUserInput eventUserInput = new EventUserInput();
             string response = string.Empty;
@@ -523,7 +515,7 @@ namespace DiceMastersDiscordBot.Services
             {
                 var args = System.Text.RegularExpressions.Regex.Split(message.Content, @"\s+");
                 var dmManifest = _currentEventList.FirstOrDefault(e => e.EventCode == args[1]);
-                if(dmManifest == null)
+                if (dmManifest == null)
                 {
                     return "Sorry, I was unable to determine which tournament you were trying to submit a team for.";
                 }
@@ -545,7 +537,7 @@ namespace DiceMastersDiscordBot.Services
             var dmEvent = _eventFactory.GetDiceMastersEvent(eventUserInput.EventName, _currentEventList);
             response = dmEvent.SubmitTeamLink(eventUserInput);
 
-            if(string.IsNullOrEmpty(response))
+            if (string.IsNullOrEmpty(response))
             {
                 return _settings.GetBotHelpString();
             }
@@ -561,9 +553,9 @@ namespace DiceMastersDiscordBot.Services
             try
             {
                 var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
-                
+
                 StringBuilder playerListString = new StringBuilder();
-                if(dmEvent.UsesChallonge)
+                if (dmEvent.UsesChallonge)
                 {
                     await message.Channel.SendMessageAsync("Retrieving list of players registered in Challonge...");
                     var participantList = await dmEvent.GetCurrentPlayerList();
@@ -609,17 +601,17 @@ namespace DiceMastersDiscordBot.Services
             var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
 
             // check TO list
-            foreach(var authTo in dmManifest.EventOrganizerIDList)
+            foreach (var authTo in dmManifest.EventOrganizerIDList)
             {
-                // simple check 
-                if(message.Author.Id.ToString() == authTo)
+                // simple check
+                if (message.Author.Id.ToString() == authTo)
                 {
                     var teamList = dmEvent.GetTeamLists();
-                    if(teamList.Any())
+                    if (teamList.Any())
                     {
                         StringBuilder teamListOutput = new StringBuilder();
                         teamListOutput.AppendLine($"Here are the team lists for {dmManifest.EventName}:");
-                        foreach(var team in teamList)
+                        foreach (var team in teamList)
                         {
                             teamListOutput.AppendLine($"{team.DiscordName}: {team.TeamLink}");
                         }
@@ -662,7 +654,7 @@ namespace DiceMastersDiscordBot.Services
 
             var playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == mentionUserString);
             // sometimes there is a ! in the mention string, sometimes there isn't? Not sure why, so just going to check both scenarios
-            if(playerDiscordUser == null)
+            if (playerDiscordUser == null)
             {
                 var hackMentionString = mentionUserString.Replace("@", "@!");
                 playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == mentionUserString);
@@ -677,57 +669,17 @@ namespace DiceMastersDiscordBot.Services
         private void CheckYouTube()
         {
             var newVideos = _youTubeService.CheckForNewVideos();
-            foreach(var video in newVideos)
+            foreach (var video in newVideos)
             {
                 var messageString = $"Channel: {video.ChannelName}, Video: {video.VideoTitle}{Environment.NewLine}{video.VideoLink}";
                 var channelsToPost = video.IsDiceMasters ? _settings.GetDiceMastersMediaChannelIds() : _settings.GetNonDiceMastersMediaChannelIds();
-                foreach(var channelId in channelsToPost)
+                foreach (var channelId in channelsToPost)
                 {
                     var discordChannel = _client.GetChannel(channelId) as IMessageChannel;
                     discordChannel.SendMessageAsync(messageString);
                     Console.WriteLine(messageString);
                 }
             }
-        }
-
-        private void CheckRSSFeeds()
-        {
-            var rssFeeds = _sheetService.LoadRSSFeedInfo();
-            foreach (var feed in rssFeeds)
-            {
-                if (!string.IsNullOrEmpty(feed.SiteUrl))
-                {
-                    try
-                    {
-                        XmlReader reader = XmlReader.Create(feed.SiteUrl);
-                        SyndicationFeed sFeed = SyndicationFeed.Load(reader);
-                        reader.Close();
-
-                        foreach (SyndicationItem item in sFeed.Items)
-                        {
-                            if (item.PublishDate.UtcDateTime > feed.DateLastChecked)
-                            {
-                                var links = string.Join(Environment.NewLine, item.Links.Select(l => l.Uri.ToString()));
-//                                var messageString = $"Site {feed.SiteName} posted:{Environment.NewLine}{item.Summary.Text}{Environment.NewLine}{links}";
-// need to clean up summary if we want to include it
-                                var messageString = $"Site {feed.SiteName} posted:{Environment.NewLine}{links}";
-
-                                foreach (var channelId in _settings.GetDiceMastersMediaChannelIds())
-                                {
-                                    var discordChannel = _client.GetChannel(channelId) as IMessageChannel;
-                                    discordChannel.SendMessageAsync(messageString);
-                                    Console.WriteLine(messageString);
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception exc)
-                    {
-                        _logger.LogError($"Exception attempting to read an RSS feed: {exc.Message}");
-                    }
-                }
-            }
-            _sheetService.UpdateRssFeedInfo();
         }
 
         private void LoadCurrentEvents()

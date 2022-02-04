@@ -14,7 +14,7 @@ namespace DiceMastersDiscordBot.Events
 
         public void Initialize(EventManifest manifest);
 
-        public string GetFormat();
+        public string GetFormat(int numberEvents);
         public string SubmitTeamLink(EventUserInput eventUserInput);
         public int GetCurrentPlayerCount();
         public List<EventUserInput> GetTeamLists();
