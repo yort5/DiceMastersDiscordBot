@@ -42,7 +42,7 @@ steps:
 - task: AzureRmWebAppDeployment@4
   inputs:
     ConnectionType: 'AzureRM'
-    azureSubscription: 'DiceMastersBot - Azure'
+    azureSubscription: 'DiceMastersBotSP'
     appType: 'webAppLinux'
     WebAppName: 'DiceMastersBot'
     packageForLinux: '$(Build.ArtifactStagingDirectory)\'
