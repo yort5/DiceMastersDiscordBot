@@ -3,8 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <OutputType>Exe</OutputType>
-    <LangVersion>preview</LangVersion>
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+    <UserSecretsId>29c02129-dba1-4f9c-bdfb-9598a2c33f5b</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

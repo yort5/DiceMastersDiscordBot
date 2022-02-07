@@ -149,7 +149,7 @@ namespace DiceMastersDiscordBot.Services
             {
                 await GetCurrentPlayerList(message);
             }
-            else if (message.Content.ToLower().StartsWith(".report") || message.Content.ToLower().StartsWith("!report"))
+            else if (message.Content.ToLower().StartsWith(".report") || message.Content.ToLower().StartsWith("!report") || message.Content.ToLower().StartsWith(".result"))
             {
                 await RecordScore(message);
             }
@@ -478,6 +478,11 @@ namespace DiceMastersDiscordBot.Services
                 }
                 else
                 {
+                    // if this is a public channel, first delete the original message, unless we are running in dev in which case we'd interfere with the Prod version
+                    if (!_environment.IsDevelopment())
+                    {
+                        await message.Channel.DeleteMessageAsync(message);
+                    }
                     var response = SubmitTeamLink(message, false);
 
                     if (string.IsNullOrEmpty(response))

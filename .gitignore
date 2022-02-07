@@ -330,3 +330,4 @@ ASALocalRun/
 .mfractor/
 
 appSettings*json
+/Properties/ServiceDependencies/DiceMastersBot - Web Deploy/profile.arm.json
