@@ -149,7 +149,8 @@ namespace DiceMastersDiscordBot.Services
             {
                 await GetCurrentPlayerList(message);
             }
-            else if (message.Content.ToLower().StartsWith(".report") || message.Content.ToLower().StartsWith("!report") || message.Content.ToLower().StartsWith(".result"))
+            else if (message.Content.ToLower().StartsWith(".report") || message.Content.ToLower().StartsWith("!report")
+                       || message.Content.ToLower().StartsWith(".result") || message.Content.ToLower().StartsWith("!result"))
             {
                 await RecordScore(message);
             }
