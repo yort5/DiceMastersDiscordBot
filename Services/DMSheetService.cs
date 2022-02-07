@@ -677,7 +677,7 @@ namespace DiceMastersDiscordBot.Services
                 var existingRecords = loadExistingRequest.Execute();
 
                 var oblist = new List<object>()
-                    { DateTime.Now };
+                    { DateTime.UtcNow };
                 var valueRange = new ValueRange();
                 valueRange.Values = new List<IList<object>> { oblist };
 
