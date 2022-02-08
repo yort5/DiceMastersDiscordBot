@@ -70,7 +70,7 @@ namespace DiceMastersDiscordBot.Services
                         playlistRequest.PlaylistId = channelInfo.ContentDetails.RelatedPlaylists.Uploads;
                         playlistRequest.MaxResults = 10;
                         var playlistResponse = playlistRequest.Execute();
-                        var diceMastersVideos = playlistResponse.Items.Where(p => p.Snippet.PublishedAt > sub.DateLastChecked).ToList();
+                        var diceMastersVideos = playlistResponse.Items.Where(p => DateTime.Parse(p.Snippet.PublishedAtRaw) > sub.DateLastChecked).ToList();
                          foreach (var playlistItem in diceMastersVideos)
                         {
                             Console.WriteLine($"{playlistItem.Snippet.Title}");
