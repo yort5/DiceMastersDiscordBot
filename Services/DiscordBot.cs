@@ -4,9 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.ServiceModel.Syndication;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using ChallongeSharp.Models.ViewModels;
 using ChallongeSharp.Models.ViewModels.Types;
 using DiceMastersDiscordBot.Entities;
@@ -191,6 +194,10 @@ namespace DiceMastersDiscordBot.Services
                 await message.Channel.DeleteMessageAsync(message);
                 await RecordFellowship(message);
             }
+            else if (message.Content.ToLower().StartsWith(".card"))
+            {
+                await CardLookup(message);
+            }
             else if (message.Content.ToLower().StartsWith("!win") || message.Content.ToLower().StartsWith(".win"))
             {
                 try
@@ -249,6 +256,24 @@ namespace DiceMastersDiscordBot.Services
             {
                 //var participants = await _challonge.GetAllParticipantsAsync(_settings.GetOneOffChallongeId());
                 //_logger.LogDebug($"{participants.Count}");
+            }
+        }
+
+        private async Task CardLookup(SocketMessage message)
+        {
+            try
+            {
+                var args = Regex.Split(message.Content, @"\s+");
+
+                var digits = new string(args[1].Where(s => char.IsDigit(s)).ToArray());
+                var letters = new string(args[1].Where(s => char.IsLetter(s)).ToArray());
+
+                var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
+                await message.Channel.SendMessageAsync(quickanddirty);
+            }
+            catch (Exception exc)
+            {
+                await message.Channel.SendMessageAsync("Sorry, unable to figure out that card");
             }
         }
 
@@ -386,18 +411,10 @@ namespace DiceMastersDiscordBot.Services
 
                             foreach (var toId in dmManifest.EventOrganizerIDList)
                             {
-                                try
-                                {
-                                    ulong toDiscordUserId;
-                                    ulong.TryParse(toId, out toDiscordUserId);
-                                    var toDiscordUser = _client.GetUser(toDiscordUserId);
-                                    await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
-                                }
-                                catch (Exception exc)
-                                {
-                                    // I suppose I could just check for null, but this way I catch everything
-                                    _logger.LogError($"Exception trying to report to TO: {exc.Message}");
-                                }
+                                ulong toDiscordUserId;
+                                ulong.TryParse(toId, out toDiscordUserId);
+                                var toDiscordUser = _client.GetUser(toDiscordUserId);
+                                await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
                             }
                             if (scoreChannel != null)
                             {
@@ -469,6 +486,7 @@ namespace DiceMastersDiscordBot.Services
                 }
                 else
                 {
+                    // if this is a public channel, first delete the original message, unless we are running in dev in which case we'd interfere with the Prod version
                     if (!_environment.IsDevelopment())
                     {
                         await message.Channel.DeleteMessageAsync(message);
@@ -680,6 +698,45 @@ namespace DiceMastersDiscordBot.Services
                     Console.WriteLine(messageString);
                 }
             }
+        }
+        private void CheckRSSFeeds()
+        {
+            var rssFeeds = _sheetService.LoadRSSFeedInfo();
+            foreach (var feed in rssFeeds)
+            {
+                if (!string.IsNullOrEmpty(feed.SiteUrl))
+                {
+                    try
+                    {
+                        XmlReader reader = XmlReader.Create(feed.SiteUrl);
+                        SyndicationFeed sFeed = SyndicationFeed.Load(reader);
+                        reader.Close();
+
+                        foreach (SyndicationItem item in sFeed.Items)
+                        {
+                            if (item.PublishDate.UtcDateTime > feed.DateLastChecked)
+                            {
+                                var links = string.Join(Environment.NewLine, item.Links.Select(l => l.Uri.ToString()));
+                                //                                var messageString = $"Site {feed.SiteName} posted:{Environment.NewLine}{item.Summary.Text}{Environment.NewLine}{links}";
+                                // need to clean up summary if we want to include it
+                                var messageString = $"Site {feed.SiteName} posted:{Environment.NewLine}{links}";
+
+                                foreach (var channelId in _settings.GetDiceMastersMediaChannelIds())
+                                {
+                                    var discordChannel = _client.GetChannel(channelId) as IMessageChannel;
+                                    discordChannel.SendMessageAsync(messageString);
+                                    Console.WriteLine(messageString);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception attempting to read an RSS feed: {exc.Message}");
+                    }
+                }
+            }
+            _sheetService.UpdateRssFeedInfo();
         }
 
         private void LoadCurrentEvents()
