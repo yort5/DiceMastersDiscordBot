@@ -51,7 +51,7 @@ namespace DiceMastersDiscordBot.Properties
             var nl = Environment.NewLine;
             helpString.Append($"{_BotName} currently supports the following commands:");
             helpString.Append($"{nl}WITHIN A CHANNEL:");
-            helpString.Append($"{nl}    `.format` - returns the current format for that channel's event");
+            helpString.Append($"{nl}    `.format` - returns the current format for that channel's event. Adding a number after (e.g. `.format 2`) will return upcoming event formats for that channel.");
             helpString.Append($"{nl}    `.submit http://tb.dicecoalition.com/yourteam` - submits your team for the event. Your link will be immediately deleted so others can't see it.");
             helpString.Append($"{nl}    `.list` - lists the current people signed up for the event.");
             helpString.Append($"{nl}    `.here` - marks a person as HERE in the spreadsheet for the event (only use at the time of the event).");
@@ -109,9 +109,9 @@ namespace DiceMastersDiscordBot.Properties
         {
             List<ulong> mediaChannelIds = new List<ulong>();
             string channelList = _config["DiceMastersMediaChannelIds"];
-            if(!string.IsNullOrEmpty(channelList))
+            if (!string.IsNullOrEmpty(channelList))
             {
-                foreach(var channelString in channelList.Split(','))
+                foreach (var channelString in channelList.Split(','))
                 {
                     ulong.TryParse(channelString, out ulong channelId);
                     mediaChannelIds.Add(channelId);
