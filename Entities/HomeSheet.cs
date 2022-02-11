@@ -7,12 +7,11 @@ namespace DiceMastersDiscordBot.Entities
 {
     public class HomeSheet
     {
-        public string EventName;
         public string SheetId;
-        public string EventDate;
         public string SheetName;
-        public string FormatDescription;
-        public string Info;
+        public String EventName;
+        public EventDetails EventDetails;
         public List<string> AuthorizedUsers = new List<string>();
+        public List<EventDetails> UpcomingEvents;
     }
 }

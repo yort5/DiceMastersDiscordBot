@@ -148,16 +148,16 @@ namespace DiceMastersDiscordBot.Services
                             EventCode = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty,
                             ChallongeTournamentName = (record.Count >= 5 && record[4] != null) ? record[4].ToString() : string.Empty,
                         };
-                        if(record.Count >= 4 && record[3] != null)
+                        if (record.Count >= 4 && record[3] != null)
                         {
                             // probably a slicker way to do this but there's no time!
                             var idList = record[3].ToString().Split(',').ToList();
-                            foreach(var id in idList)
+                            foreach (var id in idList)
                             {
                                 eventManifest.EventOrganizerIDList.Add(id.Trim());
                             }
                         }
-                        if(record.Count >= 6 && record[5] != null)
+                        if (record.Count >= 6 && record[5] != null)
                         {
                             ulong.TryParse(record[5].ToString(), out eventManifest.ScoreKeeperChannelId);
                         }
@@ -327,7 +327,7 @@ namespace DiceMastersDiscordBot.Services
 
 
                 for (int i = 1; i < values.Count; i++)
-                { 
+                {
                     if (values[i].Count > 0 && !values[i][0].ToString().ToUpper().Equals("DROPPED"))
                     {
                         UserInfo user = new UserInfo();
@@ -356,7 +356,7 @@ namespace DiceMastersDiscordBot.Services
                 var sheetRequest = _sheetService.Spreadsheets.Values.Get(sheetInfo.SheetId, range);
                 var sheetResponse = sheetRequest.Execute();
 
-                
+
                 try
                 {
                     sheetInfo.EventName = sheetResponse.Values[0][1].ToString();
@@ -367,42 +367,60 @@ namespace DiceMastersDiscordBot.Services
                     sheetInfo.EventName = eventName;
                 }
 
+                var foundNextEvent = false;
+                var upcomingEvents = new List<EventDetails>();
                 foreach (var row in sheetResponse.Values)
                 {
+                    if (foundNextEvent && !string.IsNullOrEmpty(row[0].ToString()))
+                    {
+                        upcomingEvents.Add(GetEventDetails(row));
+                    }
+
                     if (row.Count >= 1 && row[0].ToString().ToLower() == sheetInfo.SheetName.ToLower())
                     {
-                        sheetInfo.EventDate = row[0] != null ? row[0].ToString() : string.Empty;
                         sheetInfo.SheetName = row[1] != null ? row[1].ToString() : string.Empty;
-                        sheetInfo.FormatDescription = row.Count >= 3 ? row[2].ToString() : "No information for this event yet";
-                        sheetInfo.Info = row.Count >= 4 ? row[3].ToString() : string.Empty;
+                        sheetInfo.EventDetails = GetEventDetails(row);
                         string authUserList = row.Count >= 5 ? row[4].ToString() : string.Empty;
-                        if(!string.IsNullOrEmpty(authUserList))
+                        if (!string.IsNullOrEmpty(authUserList))
                         {
                             sheetInfo.AuthorizedUsers = authUserList.Split(',').ToList();
                         }
-                        return sheetInfo;
+
+                        foundNextEvent = true;
                     }
                 }
+
+                sheetInfo.UpcomingEvents = upcomingEvents;
             }
             catch (Exception exc)
             {
                 _logger.LogError($"Exception getting HomeSheet: {exc.Message}");
                 return null;
             }
-            return null;
+            return sheetInfo;
+        }
+
+        private EventDetails GetEventDetails(IList<object> row)
+        {
+            return new EventDetails
+            {
+                EventDate = row[0] != null ? row[0].ToString() : string.Empty,
+                FormatDescription = row.Count >= 3 ? row[2].ToString() : "No information for this event yet",
+                Description = row.Count >= 4 ? row[3].ToString() : string.Empty
+            };
         }
 
         internal UserInfo GetUserInfoFromDiscord(string username)
         {
             var userInfo = GetUserInfo(username, 0);
-            if (string.IsNullOrEmpty(userInfo.DiscordName)) { userInfo.DiscordName = username; } 
+            if (string.IsNullOrEmpty(userInfo.DiscordName)) { userInfo.DiscordName = username; }
             return userInfo;
         }
 
         internal UserInfo GetUserInfoFromWIN(string username)
         {
             var userInfo = GetUserInfo(username, 1);
-            if(string.IsNullOrEmpty(userInfo.WINName)) { userInfo.WINName = username; }
+            if (string.IsNullOrEmpty(userInfo.WINName)) { userInfo.WINName = username; }
             return userInfo;
         }
 
@@ -562,7 +580,7 @@ namespace DiceMastersDiscordBot.Services
                         if (values.IndexOf(record) == 0)
                         {
                             // grab the last update from the header
-                            if(record.Count >=4 && record[3] != null)
+                            if (record.Count >= 4 && record[3] != null)
                             {
                                 DateTime.TryParse(record[3].ToString(), out lastUpdate);
                             }
@@ -573,7 +591,7 @@ namespace DiceMastersDiscordBot.Services
                             ChannelName = (record.Count >= 1 && record[0] != null) ? record[0].ToString() : string.Empty,
                             ChannelId = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty,
                             DateLastChecked = lastUpdate,
-                       };
+                        };
                         subscriptions.Add(sub);
                     }
                     catch (Exception exc)
