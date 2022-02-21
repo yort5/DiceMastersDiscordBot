@@ -98,6 +98,7 @@ namespace DiceMastersDiscordBot.Services
                     _logger.LogInformation("DiscordBot is doing background work.");
 
                     LoadCurrentEvents();
+                    CheckRSSFeeds();
                     CheckYouTube();
 
                     await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
