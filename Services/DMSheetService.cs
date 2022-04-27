@@ -27,6 +27,7 @@ namespace DiceMastersDiscordBot.Services
         private const string MasterUserSheetName = "UserSheet";
         private const string MasterYouTubeSheetName = "YouTubeSubs";
         private const string MasterRSSFeedSheetName = "RSSFeeds";
+        private const string DROPPED = "DROPPED";
 
         public DMSheetService(ILoggerFactory loggerFactory, IAppSettings appSettings)
         {
@@ -211,7 +212,7 @@ namespace DiceMastersDiscordBot.Services
         }
         internal bool MarkPlayerDropped(EventUserInput eventUserInput, HomeSheet sheet)
         {
-            return MarkPlayer(eventUserInput, sheet, "DROPPED");
+            return MarkPlayer(eventUserInput, sheet, DROPPED);
         }
 
         private bool MarkPlayer(EventUserInput eventUserInput, HomeSheet sheet, string status)
@@ -241,7 +242,7 @@ namespace DiceMastersDiscordBot.Services
                             eventUserInput.Misc = (record.Count >= 4 && record[3] != null) ? record[3].ToString() : string.Empty; ;
 
                             var oblist = new List<object>()
-                                { eventUserInput.Here, eventUserInput.DiscordName, eventUserInput.TeamLink, eventUserInput.Misc};
+                                { status, eventUserInput.DiscordName, eventUserInput.TeamLink, eventUserInput.Misc};
                             var valueRange = new ValueRange();
                             valueRange.Values = new List<IList<object>> { oblist };
 
@@ -328,7 +329,7 @@ namespace DiceMastersDiscordBot.Services
 
                 for (int i = 1; i < values.Count; i++)
                 {
-                    if (values[i].Count > 0 && !values[i][0].ToString().ToUpper().Equals("DROPPED"))
+                    if (values[i].Count > 0 && !values[i][0].ToString().ToUpper().Equals(DROPPED.ToUpper()))
                     {
                         UserInfo user = new UserInfo();
                         user.DiscordName = values[i][nameIndex].ToString();
@@ -541,7 +542,7 @@ namespace DiceMastersDiscordBot.Services
                             TeamLink = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty,
                             Misc = (record.Count >= 4 && record[3] != null) ? record[3].ToString() : string.Empty
                         };
-                        if (!teamEntry.Here.ToLower().StartsWith("timestamp"))
+                        if (!teamEntry.Here.ToUpper().StartsWith(DROPPED.ToUpper()))
                         {
                             teamLists.Add(teamEntry);
                         }

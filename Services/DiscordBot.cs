@@ -545,6 +545,7 @@ namespace DiceMastersDiscordBot.Services
             else
             {
                 eventUserInput.TeamLink = message.Content
+                                            .Replace("||", string.Empty)
                                             .TrimStart("!submit".ToCharArray())
                                             .TrimStart(".submit".ToCharArray())
                                             .TrimStart("!register".ToCharArray())
