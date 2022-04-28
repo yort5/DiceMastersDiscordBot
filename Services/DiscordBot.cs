@@ -627,13 +627,22 @@ namespace DiceMastersDiscordBot.Services
                 if (message.Author.Id.ToString() == authTo)
                 {
                     var teamList = dmEvent.GetTeamLists();
+                    int count = 0;
                     if (teamList.Any())
                     {
                         StringBuilder teamListOutput = new StringBuilder();
                         teamListOutput.AppendLine($"Here are the team lists for {dmManifest.EventName}:");
                         foreach (var team in teamList)
                         {
+                            count++;
                             teamListOutput.AppendLine($"{team.DiscordName}: {team.TeamLink}");
+
+                            if(count % 5 == 0) // every five teams, go ahead and send the message so we don't exceed Discord's 2000 character limit for a message
+                            {
+                                RequestOptions request = new RequestOptions();
+                                await message.Channel.SendMessageAsync(teamListOutput.ToString());
+                                teamListOutput.Clear();
+                            }
                         }
                         return await message.Channel.SendMessageAsync(teamListOutput.ToString());
 
