@@ -117,7 +117,7 @@ namespace DiceMastersDiscordBot.Services
             if (message.Author.IsBot) return;
             if (!(message.Content.StartsWith(".") || message.Content.StartsWith("!"))) return;
 
-            var dmchannelID = await message.Author.GetOrCreateDMChannelAsync();
+            var dmchannelID = await message.Author.CreateDMChannelAsync();
             bool isDM = (message.Channel.Id == dmchannelID.Id);
 
             if (message.Content == "!ping")
@@ -181,6 +181,10 @@ namespace DiceMastersDiscordBot.Services
             else if (message.Content.ToLower().StartsWith(".teams"))
             {
                 await SendTeams(message);
+            }
+            else if (message.Content.ToLower().StartsWith(".breakdown"))
+            {
+                await GetStats(message);
             }
             else if (message.Content.ToLower().StartsWith(".register"))
             {
@@ -654,6 +658,67 @@ namespace DiceMastersDiscordBot.Services
             return await message.Channel.SendMessageAsync("Sorry, you are not authorized to list teams for this event.");
         }
 
+        private async Task<RestUserMessage> GetStats(SocketMessage message)
+        {
+            List<TeamListCharacterStats> teamListCharacterStats = new List<TeamListCharacterStats>();
+
+            var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
+            var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
+
+            // check TO list
+            foreach (var authTo in dmManifest.EventOrganizerIDList)
+            {
+                // simple check
+                if (message.Author.Id.ToString() == authTo)
+                {
+                    var teamList = dmEvent.GetTeamLists();
+                    if (teamList.Any())
+                    {
+                        foreach(var team in teamList)
+                        {
+                            var cardsInTeam = ParseTeamList(team);
+                            foreach(var card in cardsInTeam)
+                            {
+                                var cardExists = teamListCharacterStats.Where(c => c.Card.TeamBuilderId == card.TeamBuilderId).FirstOrDefault();
+                                if(cardExists != null)
+                                {
+                                    cardExists.TotalCount++;
+                                }
+                                else
+                                {
+                                    teamListCharacterStats.Add(new TeamListCharacterStats { Card = card, TotalCount = 1 });
+                                }
+                            }
+                        }
+
+                        int count = 0;
+                        if (teamList.Any())
+                        {
+                            StringBuilder teamListOutput = new StringBuilder();
+                            teamListOutput.AppendLine($"Here are the card stats for {dmManifest.EventName}:");
+                            foreach (var cardInfo in teamListCharacterStats.OrderByDescending(o => o.TotalCount))
+                            {
+                                count++;
+                                teamListOutput.AppendLine($"Card {cardInfo.Card.TeamBuilderId} appears {cardInfo.TotalCount} times.");
+
+                                if (count % 5 == 0) // every five cards, go ahead and send the message so we don't exceed Discord's 2000 character limit for a message
+                                {
+                                    RequestOptions request = new RequestOptions();
+                                    await message.Channel.SendMessageAsync(teamListOutput.ToString());
+                                    teamListOutput.Clear();
+                                }
+                            }
+                            return await message.Channel.SendMessageAsync(teamListOutput.ToString());
+
+                        }
+                    }
+                }
+            }
+
+            // no authorized TO found
+            return await message.Channel.SendMessageAsync("Sorry, you are not authorized to list teams for this event.");
+        }
+
         async Task<IUserMessage> RecordFellowship(SocketMessage message)
         {
             var dmEvent = _eventFactory.GetDiceMastersEvent(message.Channel.Name, _currentEventList);
@@ -753,6 +818,52 @@ namespace DiceMastersDiscordBot.Services
         private void LoadCurrentEvents()
         {
             _currentEventList = _sheetService.LoadEventManifests();
+        }
+
+
+        private List<CardInfo> ParseTeamList(EventUserInput team)
+        {
+            List<CardInfo> cardList = new List<CardInfo>();
+
+            if (!team.TeamLink.Contains("http")) return cardList;   // if we have no http, this isn't a valid team link
+
+            // pull out URLs if we have multiple
+            var urls = team.TeamLink.Split("http");
+
+            foreach (var url in urls)
+            {
+                try
+                {
+                    if (url.Length == 0) continue;
+                    var cardStrings = url.Substring(url.IndexOf("=")+1);
+                    int nameIndex = cardStrings.IndexOf("&name");
+                    if (nameIndex > 0)
+                    {
+                        cardStrings = cardStrings.Remove(nameIndex);
+                    }
+                    var cardIdArray = cardStrings.Split(";");
+                    foreach (var cardString in cardIdArray)
+                    {
+                        if (!string.IsNullOrEmpty(cardString))
+                        {
+                            CardInfo card = ParseCardInfoString(cardString);
+                            cardList.Add(card);
+                        }
+                    }
+                } catch { }
+            }
+
+            return cardList;
+        }
+
+        private CardInfo ParseCardInfoString(string cardString)
+        {
+            int diceCountIndex = cardString.IndexOf("x");
+            string diceCountstring = cardString.Substring(0, diceCountIndex);
+            string diceIdString = cardString.Substring(diceCountIndex + 1);
+            int.TryParse(diceCountstring, out int diceCount);
+
+            return new CardInfo { TeamBuilderId = diceIdString, DiceCount = diceCount };
         }
 
         private Task Log(LogMessage msg)

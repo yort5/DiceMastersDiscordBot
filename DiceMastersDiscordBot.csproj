@@ -1,28 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
     <UserSecretsId>29c02129-dba1-4f9c-bdfb-9598a2c33f5b</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Discord.Net" Version="2.3.1" />
-    <PackageReference Include="Google.Apis.Auth" Version="1.51.0" />
-    <PackageReference Include="Google.Apis.Core" Version="1.51.0" />
-    <PackageReference Include="Google.Apis.Sheets.v4" Version="1.51.0.2259" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="5.0.4" />
+    <PackageReference Include="Discord.Net" Version="3.7.2" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.57.0" />
+    <PackageReference Include="Google.Apis.Core" Version="1.57.0" />
+    <PackageReference Include="Google.Apis.Sheets.v4" Version="1.57.0.2727" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.7" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="4.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="5.0.1" />
-    <PackageReference Include="System.Drawing.Common" Version="5.0.2" />
-    <PackageReference Include="TwitchLib" Version="3.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="6.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="6.0.0" />
+    <PackageReference Include="TwitchLib" Version="3.3.0" />
     <PackageReference Include="ChallongeSharp" Version="0.0.6" />
-    <PackageReference Include="TimeZoneConverter" Version="3.4.0" />
-    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.51.0.2238" />
-    <PackageReference Include="System.ServiceModel.Syndication" Version="5.0.0" />
+    <PackageReference Include="TimeZoneConverter" Version="5.0.0" />
+    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.57.0.2749" />
+    <PackageReference Include="System.ServiceModel.Syndication" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
