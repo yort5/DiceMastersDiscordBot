@@ -560,6 +560,44 @@ namespace DiceMastersDiscordBot.Services
             return teamLists;
         }
 
+        public List<EventUserInputTTTDHack> GetTTTDTeams(string sheetId)
+        {
+            var range = $"Working Sheet!A:H";
+            var sheetRequest = _sheetService.Spreadsheets.Values.Get(sheetId, range);
+            var sheetResponse = sheetRequest.Execute();
+            List<EventUserInputTTTDHack> teamLists = new List<EventUserInputTTTDHack>();
+            try
+            {
+                foreach (var record in sheetResponse.Values)
+                {
+                    try
+                    {
+                        EventUserInputTTTDHack teamEntry = new EventUserInputTTTDHack
+                        {
+                            Here = (record.Count >= 1 && record[0] != null) ? record[0].ToString() : string.Empty,
+                            DiscordName = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty,
+                            TeamLink = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty,
+                            Misc = (record.Count >= 4 && record[3] != null) ? record[3].ToString() : string.Empty,
+                            CardStatus = (record.Count >= 7 && record[6] != null) ? record[6].ToString() : string.Empty,
+                            SetStatus = (record.Count >= 8 && record[7] != null) ? record[7].ToString() : string.Empty
+                        };
+                        if (!teamEntry.Here.ToUpper().StartsWith(DROPPED.ToUpper()))
+                        {
+                            teamLists.Add(teamEntry);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError($"Not a valid team row: {e.Message}");
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError($"Exception trying to find a UserInfo: {exc.Message}");
+            }
+            return teamLists;
+        }
         internal List<YouTubeSubscription> LoadYouTubeInfo()
         {
             List<YouTubeSubscription> subscriptions = new List<YouTubeSubscription>();

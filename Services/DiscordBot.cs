@@ -568,6 +568,31 @@ namespace DiceMastersDiscordBot.Services
             else
             {
                 message.Author.SendMessageAsync($"The following team was successfully submitted for {eventUserInput.EventName}{Environment.NewLine}{eventUserInput.TeamLink}");
+                if(dmEvent is TwoTeamTakedown)
+                {
+                    var teams = _sheetService.GetTTTDTeams(dmEvent.SheetId);
+
+                    var thisTeam = teams.FirstOrDefault(t => t.DiscordName == eventUserInput.DiscordName);
+                    StringBuilder statusResponse = new StringBuilder();
+                    //statusResponse.AppendLine(response);
+                    statusResponse.AppendLine("The status of your submission is:");
+                    bool teamGood = true;
+                    if(thisTeam.CardStatus != "Valid")
+                    {
+                        statusResponse.AppendLine($"You have a repeated card title among your teams, please fix and resubmit");
+                        teamGood = false;
+                    }
+                    if (thisTeam.SetStatus != "Valid")
+                    {
+                        statusResponse.AppendLine($"You have repeated a set among your teams, please fix and resubmit");
+                        teamGood = false;
+                    }
+                    if(teamGood)
+                    {
+                        statusResponse.AppendLine($"Your teams meet the 20x20 format challenge!");
+                    }
+                    message.Author.SendMessageAsync(statusResponse.ToString());
+                }
             }
             return response;
         }

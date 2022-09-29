@@ -26,10 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Events\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Remove="Entities\Refs.cs" />
   </ItemGroup>
 </Project>

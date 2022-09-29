@@ -43,6 +43,8 @@ namespace DiceMastersDiscordBot
                         .AddTransient<IDiceMastersEvent, DiceFightEvent>(s => s.GetService<DiceFightEvent>());
                     services.AddTransient<DiceSocialEvent>()
                         .AddTransient<IDiceMastersEvent, DiceSocialEvent>(s => s.GetService<DiceSocialEvent>());
+                    services.AddTransient<TwoTeamTakedown>()
+                        .AddTransient<IDiceMastersEvent, TwoTeamTakedown>(s => s.GetService<TwoTeamTakedown>());
                     services.AddHttpClient<ChallongeEvent>(c =>
                     {
                         c.BaseAddress = new Uri("https://api.challonge.com");
