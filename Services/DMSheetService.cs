@@ -678,6 +678,7 @@ namespace DiceMastersDiscordBot.Services
                         {
                             SiteName = (record.Count >= 1 && record[0] != null) ? record[0].ToString() : string.Empty,
                             SiteUrl = (record.Count >= 2 && record[1] != null) ? record[1].ToString() : string.Empty,
+                            ChannelIds = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty,
                             DateLastChecked = lastUpdate,
                         };
                         subscriptions.Add(sub);

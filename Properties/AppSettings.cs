@@ -139,5 +139,19 @@ namespace DiceMastersDiscordBot.Properties
         {
             return _config["OneOffTODiscordID"];
         }
+
+        public List<ulong> ParseIdsFromString(string input)
+        {
+            List<ulong> ids = new List<ulong>();
+            if (!string.IsNullOrEmpty(input))
+            {
+                foreach (var ulongString in input.Split(','))
+                {
+                    ulong.TryParse(ulongString, out ulong ulongId);
+                    ids.Add(ulongId);
+                }
+            }
+            return ids;
+        }
     }
 }

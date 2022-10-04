@@ -822,7 +822,16 @@ namespace DiceMastersDiscordBot.Services
                                 // need to clean up summary if we want to include it
                                 var messageString = $"Site {feed.SiteName} posted:{Environment.NewLine}{links}";
 
-                                foreach (var channelId in _settings.GetDiceMastersMediaChannelIds())
+                                List<ulong> channelIds = new List<ulong>();
+                                if (!string.IsNullOrEmpty(feed.ChannelIds))
+                                {
+                                    channelIds = _settings.ParseIdsFromString(feed.ChannelIds);
+                                }
+                                else
+                                {
+                                    channelIds = _settings.GetDiceMastersMediaChannelIds();
+                                }
+                                foreach (var channelId in channelIds)
                                 {
                                     var discordChannel = _client.GetChannel(channelId) as IMessageChannel;
                                     discordChannel.SendMessageAsync(messageString);

@@ -24,6 +24,6 @@ namespace DiceMastersDiscordBot.Properties
         public string GetBotHelpMoreString();
 
         public string GetHackExceptionUser();
-
+        public List<ulong> ParseIdsFromString(string input);
     }
 }

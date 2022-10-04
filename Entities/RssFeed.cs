@@ -9,6 +9,7 @@ namespace DiceMastersDiscordBot.Entities
 
         public string SiteName { get; set; }
         public string SiteUrl { get; set; }
+        public string ChannelIds { get; set; }
         public DateTime DateLastChecked { get; set; }
     }
 }
