@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.ServiceModel.Syndication;
 using System.Text;
@@ -17,6 +18,7 @@ using DiceMastersDiscordBot.Events;
 using DiceMastersDiscordBot.Properties;
 using Discord;
 using Discord.Commands;
+using Discord.Net;
 using Discord.Net.Rest;
 using Discord.Rest;
 using Discord.WebSocket;
@@ -31,7 +33,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Logging;
-using TwitchLib.Api.Core.RateLimiter;
 
 namespace DiceMastersDiscordBot.Services
 {
@@ -48,6 +49,7 @@ namespace DiceMastersDiscordBot.Services
 
 
         private List<EventManifest> _currentEventList = new List<EventManifest>();
+        private List<CommunityCardInfo> _allCommunityCardList = new List<CommunityCardInfo>();
 
         private DiscordSocketClient _client;
 
@@ -82,8 +84,9 @@ namespace DiceMastersDiscordBot.Services
                 _client.Log += Log;
 
                 //Initialize command handling.
+                //_client.Ready += Client_Ready;
                 _client.MessageReceived += DiscordMessageReceived;
-                //await InstallCommands();
+                //_client.SlashCommandExecuted += SlashCommandHandler;
 
                 // Connect the bot to Discord
                 string token = _settings.GetDiscordToken();
@@ -100,6 +103,7 @@ namespace DiceMastersDiscordBot.Services
                     LoadCurrentEvents();
                     CheckRSSFeeds();
                     CheckYouTube();
+                    LoadCardInfo();
 
                     await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
                 }
@@ -110,6 +114,38 @@ namespace DiceMastersDiscordBot.Services
             }
 
             _logger.LogInformation("ServiceA has stopped.");
+        }
+
+        private async Task SlashCommandHandler(SocketSlashCommand command)
+        {
+            await command.RespondAsync("Placeholder for slash command");
+        }
+
+        private async Task Client_Ready()
+        {
+            var commandName = "card";
+            var cardCommand = new SlashCommandBuilder()
+                .WithName(commandName)
+                .WithDescription("Lists out the info for a Dice Masters card.")
+                .AddOption("team builder code", ApplicationCommandOptionType.String, "The Team Builder code of the card", isDefault: true);
+
+
+            foreach(var guild in _client.Guilds)
+            {
+                var existingCommands = await guild.GetApplicationCommandsAsync();
+                var checkCommand = existingCommands.Where(c => c.Name == commandName);
+                if (!checkCommand.Any())
+                {
+                    try
+                    {
+                        await guild.CreateApplicationCommandAsync(cardCommand.Build());
+                    }
+                    catch (HttpException exc)
+                    {
+                        Console.WriteLine(exc.Message);
+                    }
+                }
+            }
         }
 
         private async Task DiscordMessageReceived(SocketMessage message)
@@ -264,7 +300,7 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
-        private async Task CardLookup(SocketMessage message)
+        private async Task CardLookup(SocketMessage message, bool imageOnly = false)
         {
             try
             {
@@ -273,8 +309,46 @@ namespace DiceMastersDiscordBot.Services
                 var digits = new string(args[1].Where(s => char.IsDigit(s)).ToArray());
                 var letters = new string(args[1].Where(s => char.IsLetter(s)).ToArray());
 
+                var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
+
+                var communityCardInfo = _allCommunityCardList.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
                 var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
-                await message.Channel.SendMessageAsync(quickanddirty);
+
+                if (!imageOnly || communityCardInfo != null)
+                {
+                    var cardEmbed = new EmbedBuilder
+                    {
+//                        Title = $"{communityCardInfo.CardTitle} : {communityCardInfo.CardSubtitle}",
+                        Title = $"{communityCardInfo.CardTitle}",
+                       // Description = communityCardInfo.CardSubtitle,
+                       // ImageUrl = quickanddirty
+                       ThumbnailUrl = quickanddirty
+                    };
+
+                    cardEmbed
+                        .AddField("SubTitle", communityCardInfo.CardSubtitle)
+                        .AddField("Ability Text", communityCardInfo.AbilityText)
+                        .AddField("Affiliations", communityCardInfo.Affiliation)
+                        .AddField("Rarity", communityCardInfo.Rarity, true)
+                        //.AddField("Die stats", communityCardInfo.StatLine)
+                        .WithFooter(footer => footer.Text = communityCardInfo.TeamBuilderId);
+
+                    await message.Channel.SendMessageAsync(embed: cardEmbed.Build());
+
+                    //await message.Channel.SendMessageAsync(quickanddirty);
+                    //StringBuilder cardDescription = new StringBuilder();
+                    //cardDescription.AppendLine($"Card Name: {communityCardInfo.CardTitle}");
+                    //cardDescription.AppendLine($"Card Ability");
+                    //cardDescription.AppendLine($"`{communityCardInfo.AbilityText}`");
+                    //cardDescription.AppendLine($"Affiliation: {communityCardInfo.Affiliation}");
+                    //cardDescription.AppendLine($"Rarity: {communityCardInfo.Rarity}");
+                    //cardDescription.AppendLine($"");
+                    //await message.Channel.SendMessageAsync(cardDescription.ToString());
+                }
+                else
+                {
+                    await message.Channel.SendMessageAsync(quickanddirty);
+                }
             }
             catch (Exception exc)
             {
@@ -661,7 +735,7 @@ namespace DiceMastersDiscordBot.Services
                     {
                         StringBuilder teamListOutput = new StringBuilder();
                         teamListOutput.AppendLine($"Here are the team lists for {dmManifest.EventName}:");
-                        foreach (var team in teamList)
+                        foreach (var team in teamList.OrderBy(t => t.DiscordName))
                         {
                             count++;
                             teamListOutput.AppendLine($"{team.DiscordName}: {team.TeamLink}");
@@ -771,12 +845,12 @@ namespace DiceMastersDiscordBot.Services
         {
             UserInfo userFromMention = new UserInfo();
 
-            var playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == mentionUserString);
-            // sometimes there is a ! in the mention string, sometimes there isn't? Not sure why, so just going to check both scenarios
+            var playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Id.ToString() == mentionUserString);
+            // Discord changed their format, so giving this a try.
             if (playerDiscordUser == null)
             {
-                var hackMentionString = mentionUserString.Replace("@", "@!");
-                playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Mention == mentionUserString);
+                var hackMentionString = mentionUserString.Replace("@", "").Replace(">","").Replace("<","");
+                playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Id.ToString() == hackMentionString);
             }
 
             // hopefully if we are here we either have a SocketUser, or the string wasn't actually a Discord @mention but just the text of the username
@@ -854,6 +928,13 @@ namespace DiceMastersDiscordBot.Services
             _currentEventList = _sheetService.LoadEventManifests();
         }
 
+        private void LoadCardInfo()
+        {
+            if(!_allCommunityCardList.Any())
+            {
+                _allCommunityCardList = _sheetService.LoadAllCommunityCards();
+            }
+        }
 
         private List<CardInfo> ParseTeamList(EventUserInput team)
         {

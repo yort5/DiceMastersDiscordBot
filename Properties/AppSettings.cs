@@ -17,6 +17,7 @@ namespace DiceMastersDiscordBot.Properties
         private readonly string _GoogleToken;
         private readonly string _ChallongeToken;
         private readonly string _MasterSheetId;
+        private readonly string _CommunitySheetId;
         private readonly string _CrimeSheetId;
 
         public AppSettings(ILoggerFactory loggerFactory, IConfiguration config)
@@ -29,6 +30,7 @@ namespace DiceMastersDiscordBot.Properties
             _ChallongeToken = _config["ChallongeToken"];
 
             _MasterSheetId = _config["MasterSheetId"];
+            _CommunitySheetId = _config["CommunitySheetId"];
             _CrimeSheetId = _config["CrimeSheetId"];
         }
 
@@ -91,6 +93,11 @@ namespace DiceMastersDiscordBot.Properties
         public string GetMasterSheetId()
         {
             return _MasterSheetId;
+        }
+
+        public string GetCommunitySheetId()
+        {
+            return _CommunitySheetId;
         }
 
         public string GetCrimeSheetId()

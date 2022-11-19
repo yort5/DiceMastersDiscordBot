@@ -344,6 +344,55 @@ namespace DiceMastersDiscordBot.Services
             return currentPlayerList;
         }
 
+        internal List<CommunityCardInfo> LoadAllCommunityCards()
+        {
+            List<CommunityCardInfo> allCommunityCards = new List<CommunityCardInfo>();
+            try
+            {
+                // Define request parameters.
+                var range = $"ALLCARDS!A:P";
+
+                // load the data
+                var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetCommunitySheetId(), range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+
+
+                foreach (var record in values)
+                {
+                    try
+                    {
+                        CommunityCardInfo card = new CommunityCardInfo
+                        {
+                            TeamBuilderId = GetStringFromRecord(record, 0),
+                            CardTitle =     GetStringFromRecord(record, 1),
+                            CardSubtitle =  GetStringFromRecord(record, 2),
+                            PurchaseCost =  GetStringFromRecord(record, 3),
+                            EnergyType =    GetStringFromRecord(record, 4),
+                            Rarity =        GetStringFromRecord(record, 5),
+                            Affiliation =   GetStringFromRecord(record, 6),
+                            AbilityText =   GetStringFromRecord(record, 7),
+                            StatLine =      GetStringFromRecord(record, 8),
+                            CardImageUrl =  GetStringFromRecord(record, 9),
+                            DiceImageUrl =  GetStringFromRecord(record, 10),
+                            Nickname =      GetStringFromRecord(record, 11)
+                        };
+                        allCommunityCards.Add(card);
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception loading eventManifests: {exc.Message}");
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+            }
+            return allCommunityCards;
+
+        }
+
         #region Helper Methods
         internal HomeSheet GetHomeSheet(string sheetId, string eventName)
         {
@@ -777,6 +826,10 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
+        private string GetStringFromRecord(IList<object> record, int index)
+        {
+            return (record.Count >= (index+1) && record[index] != null) ? record[index].ToString() : string.Empty;
+        }
         #endregion
     }
 }

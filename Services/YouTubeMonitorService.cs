@@ -7,7 +7,6 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
 using Microsoft.Extensions.Logging;
-using TwitchLib.PubSub.Models.Responses.Messages;
 
 namespace DiceMastersDiscordBot.Services
 {
