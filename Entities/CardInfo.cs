@@ -8,10 +8,7 @@ namespace DiceMastersDiscordBot.Entities
         }
 
         public string TeamBuilderId { get; set; }
-        public string CardTitle { get; set; }
-        public string CardSubtitle { get; set; }
-        public string PurchaseCost { get; set; }
         public int DiceCount { get; set; }
-        public int MaxDice { get; set; }
+        public CommunityCardInfo FullCardInfo { get; set; }
     }
 }

@@ -798,7 +798,14 @@ namespace DiceMastersDiscordBot.Services
                             foreach (var cardInfo in teamListCharacterStats.OrderByDescending(o => o.TotalCount))
                             {
                                 count++;
-                                teamListOutput.AppendLine($"Card {cardInfo.Card.TeamBuilderId} appears {cardInfo.TotalCount} times.");
+                                if (cardInfo.Card.FullCardInfo == null)
+                                {
+                                    teamListOutput.AppendLine($"Card {cardInfo.Card.TeamBuilderId} appears {cardInfo.TotalCount} times.");
+                                }
+                                else
+                                {
+                                    teamListOutput.AppendLine($"Card {cardInfo.Card.TeamBuilderId}: {cardInfo.Card.FullCardInfo.Rarity} {cardInfo.Card.FullCardInfo.CardTitle} appears {cardInfo.TotalCount} times.");
+                                }
 
                                 if (count % 5 == 0) // every five cards, go ahead and send the message so we don't exceed Discord's 2000 character limit for a message
                                 {
@@ -844,17 +851,23 @@ namespace DiceMastersDiscordBot.Services
         private UserInfo GetUserFromMention(SocketMessage message, string mentionUserString)
         {
             UserInfo userFromMention = new UserInfo();
+            var strippedMentionString = mentionUserString.Replace("@", "").Replace(">", "").Replace("<", "");
 
             var playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Id.ToString() == mentionUserString);
             // Discord changed their format, so giving this a try.
             if (playerDiscordUser == null)
             {
-                var hackMentionString = mentionUserString.Replace("@", "").Replace(">","").Replace("<","");
-                playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Id.ToString() == hackMentionString);
+                playerDiscordUser = message.MentionedUsers.FirstOrDefault(u => u.Id.ToString() == strippedMentionString);
             }
 
             // hopefully if we are here we either have a SocketUser, or the string wasn't actually a Discord @mention but just the text of the username
             userFromMention = _sheetService.GetUserInfoFromDiscord(playerDiscordUser != null ? playerDiscordUser.Username : mentionUserString.TrimStart('@'));
+
+            // if we are still null, try to look up the Challonge user
+            if (userFromMention == null)
+            {
+                userFromMention = _sheetService.GetUserInfoFromChallonge(strippedMentionString);
+            }
 
             return userFromMention;
         }
@@ -978,7 +991,12 @@ namespace DiceMastersDiscordBot.Services
             string diceIdString = cardString.Substring(diceCountIndex + 1);
             int.TryParse(diceCountstring, out int diceCount);
 
-            return new CardInfo { TeamBuilderId = diceIdString, DiceCount = diceCount };
+            var digits = new string(diceIdString.Where(s => char.IsDigit(s)).ToArray());
+            var letters = new string(diceIdString.Where(s => char.IsLetter(s)).ToArray());
+            var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
+            var fullCardInfo = _allCommunityCardList.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
+
+            return new CardInfo { TeamBuilderId = diceIdString, DiceCount = diceCount, FullCardInfo = fullCardInfo };
         }
 
         private Task Log(LogMessage msg)
