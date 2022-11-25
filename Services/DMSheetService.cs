@@ -344,13 +344,13 @@ namespace DiceMastersDiscordBot.Services
             return currentPlayerList;
         }
 
-        internal List<CommunityCardInfo> LoadAllCommunityCards()
+        internal List<SetInfo> LoadAllSets()
         {
-            List<CommunityCardInfo> allCommunityCards = new List<CommunityCardInfo>();
+            List<SetInfo> allSets = new List<SetInfo>();
             try
             {
                 // Define request parameters.
-                var range = $"ALLCARDS!A:P";
+                var range = $"SetInfo!A:H";
 
                 // load the data
                 var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetCommunitySheetId(), range);
@@ -362,26 +362,21 @@ namespace DiceMastersDiscordBot.Services
                 {
                     try
                     {
-                        CommunityCardInfo card = new CommunityCardInfo
+                        if (values.IndexOf(record) == 0) continue;
+                        SetInfo card = new SetInfo
                         {
-                            TeamBuilderId = GetStringFromRecord(record, 0),
-                            CardTitle =     GetStringFromRecord(record, 1),
-                            CardSubtitle =  GetStringFromRecord(record, 2),
-                            PurchaseCost =  GetStringFromRecord(record, 3),
-                            EnergyType =    GetStringFromRecord(record, 4),
-                            Rarity =        GetStringFromRecord(record, 5),
-                            Affiliation =   GetStringFromRecord(record, 6),
-                            AbilityText =   GetStringFromRecord(record, 7),
-                            StatLine =      GetStringFromRecord(record, 8),
-                            CardImageUrl =  GetStringFromRecord(record, 9),
-                            DiceImageUrl =  GetStringFromRecord(record, 10),
-                            Nickname =      GetStringFromRecord(record, 11)
+                            SetCode = GetStringFromRecord(record, 0),
+                            Description = GetStringFromRecord(record, 1),
+                            IP = GetStringFromRecord(record, 2),
+                            DateReleased = GetStringFromRecord(record, 3),
+                            IsModern = GetStringFromRecord(record, 4) == "1",
+                            IsSilver = GetStringFromRecord(record, 5) == "1",
                         };
-                        allCommunityCards.Add(card);
+                        allSets.Add(card);
                     }
                     catch (Exception exc)
                     {
-                        _logger.LogError($"Exception loading eventManifests: {exc.Message}");
+                        _logger.LogError($"Exception loading allSets: {exc.Message}");
                     }
                 }
             }
@@ -389,8 +384,61 @@ namespace DiceMastersDiscordBot.Services
             {
                 Console.WriteLine(exc.Message);
             }
-            return allCommunityCards;
+            return allSets;
 
+        }
+        internal List<CommunityCardInfo> LoadAllCommunityCards()
+        {
+            List<CommunityCardInfo> allCommunityCards = new List<CommunityCardInfo>();
+
+            var sets = LoadAllSets();
+            foreach (var set in sets)
+            {
+                try
+                {
+                    // Define request parameters.
+                    var range = $"{set.SetCode}!A:P";
+
+                    // load the data
+                    var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetCommunitySheetId(), range);
+                    var sheetResponse = sheetRequest.Execute();
+                    var values = sheetResponse.Values;
+
+
+                    foreach (var record in values)
+                    {
+                        try
+                        {
+                            if (values.IndexOf(record) == 0) continue;
+                            CommunityCardInfo card = new CommunityCardInfo
+                            {
+                                TeamBuilderId = GetStringFromRecord(record, 0),
+                                CardTitle = GetStringFromRecord(record, 1),
+                                CardSubtitle = GetStringFromRecord(record, 2),
+                                PurchaseCost = GetStringFromRecord(record, 3),
+                                EnergyType = GetStringFromRecord(record, 4),
+                                Rarity = GetStringFromRecord(record, 5),
+                                Affiliation = GetStringFromRecord(record, 6),
+                                AbilityText = GetStringFromRecord(record, 7),
+                                StatLine = GetStringFromRecord(record, 8),
+                                CardImageUrl = GetStringFromRecord(record, 9),
+                                DiceImageUrl = GetStringFromRecord(record, 10),
+                                Nickname = GetStringFromRecord(record, 11)
+                            };
+                            allCommunityCards.Add(card);
+                        }
+                        catch (Exception exc)
+                        {
+                            _logger.LogError($"Exception loading allCommunityCards: {exc.Message}");
+                        }
+                    }
+                }
+                catch (Exception exc)
+                {
+                    Console.WriteLine(exc.Message);
+                }
+            }
+            return allCommunityCards;
         }
 
         #region Helper Methods
