@@ -218,7 +218,7 @@ namespace DiceMastersDiscordBot.Services
             {
                 await SendTeams(message);
             }
-            else if (message.Content.ToLower().StartsWith(".breakdown"))
+            else if (message.Content.ToLower().StartsWith(".stats"))
             {
                 await GetStats(message);
             }
@@ -765,47 +765,67 @@ namespace DiceMastersDiscordBot.Services
             var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
 
             // check TO list
-            foreach (var authTo in dmManifest.EventOrganizerIDList)
+            var authorized = dmManifest.EventOrganizerIDList.Where(to => to == message.Author.Id.ToString());
+            if (authorized.Any())
             {
-                // simple check
-                if (message.Author.Id.ToString() == authTo)
+                var teamList = dmEvent.GetTeamLists();
+                if (teamList.Any())
                 {
-                    var teamList = dmEvent.GetTeamLists();
-                    if (teamList.Any())
+                    foreach (var team in teamList)
                     {
-                        foreach(var team in teamList)
+                        var cardsInTeam = ParseTeamList(team);
+                        foreach (var card in cardsInTeam)
                         {
-                            var cardsInTeam = ParseTeamList(team);
-                            foreach(var card in cardsInTeam)
+                            var cardExists = teamListCharacterStats.Where(c => c.Card.TeamBuilderId == card.TeamBuilderId).FirstOrDefault();
+                            if (cardExists != null)
                             {
-                                var cardExists = teamListCharacterStats.Where(c => c.Card.TeamBuilderId == card.TeamBuilderId).FirstOrDefault();
-                                if(cardExists != null)
-                                {
-                                    cardExists.TotalCount++;
-                                }
-                                else
-                                {
-                                    teamListCharacterStats.Add(new TeamListCharacterStats { Card = card, TotalCount = 1 });
-                                }
+                                cardExists.TotalCount++;
+                            }
+                            else
+                            {
+                                teamListCharacterStats.Add(new TeamListCharacterStats { Card = card, TotalCount = 1 });
+                            }
+                        }
+                    }
+
+                    int count = 0;
+                    if (teamListCharacterStats.Any())
+                    {
+                        StringBuilder teamListOutput = new StringBuilder();
+                        teamListOutput.AppendLine($"Here are the card stats for {dmManifest.EventName}:");
+                        foreach (var cardInfo in teamListCharacterStats.Where(t => t.TotalCount >= 5).OrderByDescending(o => o.TotalCount))
+                        {
+                            count++;
+                            if (cardInfo.Card.FullCardInfo == null)
+                            {
+                                teamListOutput.AppendLine($"Card {cardInfo.Card.TeamBuilderId} appears {cardInfo.TotalCount} times.");
+                            }
+                            else
+                            {
+                                teamListOutput.AppendLine($"Card {cardInfo.Card.TeamBuilderId}: {cardInfo.Card.FullCardInfo.RarityAbbreviation} {cardInfo.Card.FullCardInfo.CardTitle} appears {cardInfo.TotalCount} times.");
+                            }
+
+                            if (count % 5 == 0) // every five cards, go ahead and send the message so we don't exceed Discord's 2000 character limit for a message
+                            {
+                                RequestOptions request = new RequestOptions();
+                                await message.Channel.SendMessageAsync(teamListOutput.ToString());
+                                teamListOutput.Clear();
                             }
                         }
 
-                        int count = 0;
-                        if (teamList.Any())
+                        for(int i=4; i > 0; i--)
                         {
-                            StringBuilder teamListOutput = new StringBuilder();
-                            teamListOutput.AppendLine($"Here are the card stats for {dmManifest.EventName}:");
-                            foreach (var cardInfo in teamListCharacterStats.OrderByDescending(o => o.TotalCount))
+                            teamListOutput.AppendLine($"The following cards were in {i} teams:");
+                            int cardindex = 0;
+                            var countcards = teamListCharacterStats.Where(t => t.TotalCount == i).OrderBy(o => o.Card.FullCardInfo.CardTitle).ToList();
+
+                            var batch = string.Join(",", countcards.Skip(cardindex).Take(10).Select(c => c.SummaryOutput()).ToArray());
+
+                            while (!string.IsNullOrEmpty(batch))
                             {
+                                cardindex += 10;
                                 count++;
-                                if (cardInfo.Card.FullCardInfo == null)
-                                {
-                                    teamListOutput.AppendLine($"Card {cardInfo.Card.TeamBuilderId} appears {cardInfo.TotalCount} times.");
-                                }
-                                else
-                                {
-                                    teamListOutput.AppendLine($"Card {cardInfo.Card.TeamBuilderId}: {cardInfo.Card.FullCardInfo.Rarity} {cardInfo.Card.FullCardInfo.CardTitle} appears {cardInfo.TotalCount} times.");
-                                }
+                                teamListOutput.AppendLine(batch);
 
                                 if (count % 5 == 0) // every five cards, go ahead and send the message so we don't exceed Discord's 2000 character limit for a message
                                 {
@@ -813,10 +833,14 @@ namespace DiceMastersDiscordBot.Services
                                     await message.Channel.SendMessageAsync(teamListOutput.ToString());
                                     teamListOutput.Clear();
                                 }
-                            }
-                            return await message.Channel.SendMessageAsync(teamListOutput.ToString());
 
+                                batch = string.Join(",", countcards.Skip(cardindex).Take(10).Select(c => c.SummaryOutput()).ToArray());
+                            }
                         }
+
+                        return await message.Channel.SendMessageAsync(teamListOutput.ToString());
+
+
                     }
                 }
             }
@@ -996,7 +1020,7 @@ namespace DiceMastersDiscordBot.Services
             var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
             var fullCardInfo = _allCommunityCardList.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
 
-            return new CardInfo { TeamBuilderId = diceIdString, DiceCount = diceCount, FullCardInfo = fullCardInfo };
+            return new CardInfo { TeamBuilderId = diceIdString, DiceCount = diceCount, FullCardInfo = fullCardInfo ?? new CommunityCardInfo { TeamBuilderId = teamBuilderId } };
         }
 
         private Task Log(LogMessage msg)

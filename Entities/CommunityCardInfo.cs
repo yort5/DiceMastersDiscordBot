@@ -7,8 +7,8 @@ namespace DiceMastersDiscordBot.Entities
         {
         }
 
-        public string TeamBuilderId { get; set; }
-        public string CardTitle { get; set; }
+        public string TeamBuilderId { get; set; } = string.Empty;
+        public string CardTitle { get; set; } = string.Empty;
         public string CardSubtitle { get; set; }
         public string PurchaseCost { get; set; }
         public string EnergyType { get; set; }
@@ -21,5 +21,25 @@ namespace DiceMastersDiscordBot.Entities
         public string Nickname { get; set; }
         public string ImageFolder { get; set; }
         public string CardNumber { get; set; }
+
+        public string RarityAbbreviation 
+        { 
+            get
+            {
+                switch(Rarity)
+                {
+                    case "Common":
+                        return "C";
+                    case "Uncommon":
+                        return "UC";
+                    case "Rare":
+                        return "R";
+                    case "Super":
+                        return "SR";
+                    default:
+                        return Rarity;
+                }
+            }
+        }
     }
 }

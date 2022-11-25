@@ -9,6 +9,6 @@ namespace DiceMastersDiscordBot.Entities
 
         public string TeamBuilderId { get; set; }
         public int DiceCount { get; set; }
-        public CommunityCardInfo FullCardInfo { get; set; }
+        public CommunityCardInfo FullCardInfo { get; set; } = new CommunityCardInfo();
     }
 }
