@@ -469,6 +469,7 @@ namespace DiceMastersDiscordBot.Services
                 var upcomingEvents = new List<EventDetails>();
                 foreach (var row in sheetResponse.Values)
                 {
+                    if(row.Count == 0) { continue; }
                     if (foundNextEvent && !string.IsNullOrEmpty(row[0].ToString()))
                     {
                         upcomingEvents.Add(GetEventDetails(row));
@@ -500,12 +501,22 @@ namespace DiceMastersDiscordBot.Services
 
         private EventDetails GetEventDetails(IList<object> row)
         {
-            return new EventDetails
+            EventDetails eventDetails = new EventDetails();
+            try
             {
-                EventDate = row[0] != null ? row[0].ToString() : string.Empty,
-                FormatDescription = row.Count >= 3 ? row[2].ToString() : "No information for this event yet",
-                Description = row.Count >= 4 ? row[3].ToString() : string.Empty
-            };
+
+                eventDetails = new EventDetails
+                {
+                    EventDate = row[0] != null ? row[0].ToString() : string.Empty,
+                    FormatDescription = row.Count >= 3 ? row[2].ToString() : "No information for this event yet",
+                    Description = row.Count >= 4 ? row[3].ToString() : string.Empty
+                };
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError($"Exception getting Event Details: {exc.Message}");
+            }
+            return eventDetails;
         }
 
         internal UserInfo GetUserInfoFromDiscord(string username)
