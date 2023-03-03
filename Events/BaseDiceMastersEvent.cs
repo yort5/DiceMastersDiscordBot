@@ -62,7 +62,7 @@ namespace DiceMastersDiscordBot.Events
             _eventOrganizerDiscordIds = manifest.EventOrganizerIDList;
         }
 
-        public string GetFormat(int numberEvents)
+        public virtual string GetFormat(int numberEvents)
         {
             var eventsToGet = numberEvents > _homeSheet.UpcomingEvents.Count()
                 ? _homeSheet.UpcomingEvents.Count

@@ -114,37 +114,25 @@ namespace DiceMastersDiscordBot.Properties
 
         public List<ulong> GetDiceMastersMediaChannelIds()
         {
-            List<ulong> mediaChannelIds = new List<ulong>();
             string channelList = _config["DiceMastersMediaChannelIds"];
-            if (!string.IsNullOrEmpty(channelList))
-            {
-                foreach (var channelString in channelList.Split(','))
-                {
-                    ulong.TryParse(channelString, out ulong channelId);
-                    mediaChannelIds.Add(channelId);
-                }
-            }
-            return mediaChannelIds;
+            return ParseIdsFromString(channelList);
         }
 
         public List<ulong> GetNonDiceMastersMediaChannelIds()
         {
-            List<ulong> mediaChannelIds = new List<ulong>();
             string channelList = _config["NonDiceMastersMediaChannelIds"];
-            if (!string.IsNullOrEmpty(channelList))
-            {
-                foreach (var channelString in channelList.Split(','))
-                {
-                    ulong.TryParse(channelString, out ulong channelId);
-                    mediaChannelIds.Add(channelId);
-                }
-            }
-            return mediaChannelIds;
+            return ParseIdsFromString(channelList);
         }
 
         public string GetHackExceptionUser()
         {
             return _config["OneOffTODiscordID"];
+        }
+
+        public List<ulong> GetServersForSlashCommand(string slashCommandName)
+        {
+            var serverList = _config[$"SlashCommandFlag:{slashCommandName}"];
+            return ParseIdsFromString(serverList);
         }
 
         public List<ulong> ParseIdsFromString(string input)

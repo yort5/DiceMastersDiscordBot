@@ -84,9 +84,9 @@ namespace DiceMastersDiscordBot.Services
                 _client.Log += Log;
 
                 //Initialize command handling.
-                //_client.Ready += Client_Ready;
+                _client.Ready += Client_Ready;
                 _client.MessageReceived += DiscordMessageReceived;
-                //_client.SlashCommandExecuted += SlashCommandHandler;
+                _client.SlashCommandExecuted += SlashCommandHandler;
 
                 // Connect the bot to Discord
                 string token = _settings.GetDiscordToken();
@@ -118,32 +118,98 @@ namespace DiceMastersDiscordBot.Services
 
         private async Task SlashCommandHandler(SocketSlashCommand command)
         {
-            await command.RespondAsync("Placeholder for slash command");
+            switch (command.Data.Name)
+            {
+                case "card":
+                    await HandleCardCommandAsync(command);
+                    break;
+                case "format":
+                    await HandleFormatCommandAsync(command);
+                    break;
+            }
+        }
+
+        private async Task HandleCardCommandAsync(SocketSlashCommand command, bool imageOnly = false)
+        {
+            try
+            {
+                var cardCode = command.Data.Options.First().Value.ToString();
+
+                var digits = new string(cardCode.Where(s => char.IsDigit(s)).ToArray());
+                var letters = new string(cardCode.Where(s => char.IsLetter(s)).ToArray());
+
+                var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
+
+                var communityCardInfo = _allCommunityCardList.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
+                var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
+
+                if (!imageOnly || communityCardInfo != null)
+                {
+                    var cardEmbed = new EmbedBuilder
+                    {
+                        Title = $"{communityCardInfo.CardTitle}",
+                        ThumbnailUrl = quickanddirty
+                    };
+
+                    cardEmbed
+                        .AddField("SubTitle", communityCardInfo.CardSubtitle)
+                        .AddField("Ability Text", communityCardInfo.AbilityText)
+                        .AddField("Affiliations", communityCardInfo.Affiliation)
+                        .AddField("Rarity", communityCardInfo.Rarity, true)
+                        //.AddField("Die stats", communityCardInfo.StatLine)
+                        .WithFooter(footer => footer.Text = communityCardInfo.TeamBuilderId);
+
+                    await command.RespondAsync(embed: cardEmbed.Build());
+                }
+                else
+                {
+                    await command.RespondAsync(quickanddirty);
+                }
+            }
+            catch (Exception exc)
+            {
+                await command.RespondAsync("Sorry, unable to figure out that card");
+            }
+        }
+
+        private async Task HandleFormatCommandAsync(SocketSlashCommand command)
+        {
+            var numberString = command.Data.Options.Any() ? command.Data.Options.First().Value.ToString() : "1";
+            var dmEvent = _eventFactory.GetDiceMastersEvent(command.Channel.Name, _currentEventList);
+            var numberEvents = 0;
+            int.TryParse(numberString, out numberEvents);
+            var info = dmEvent.GetFormat(numberEvents);
+            await command.RespondAsync(info);
         }
 
         private async Task Client_Ready()
         {
-            var commandName = "card";
             var cardCommand = new SlashCommandBuilder()
-                .WithName(commandName)
+                .WithName("card")
                 .WithDescription("Lists out the info for a Dice Masters card.")
-                .AddOption("team builder code", ApplicationCommandOptionType.String, "The Team Builder code of the card", isDefault: true);
+                .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card", isRequired: true);
+            await RegisterCommand(cardCommand);
 
+            var formatCommand = new SlashCommandBuilder()
+                .WithName("format")
+                .WithDescription("Lists out the format for the next event in this channel.")
+                .AddOption("number", ApplicationCommandOptionType.String, "How many events in the future you want information for (default is 1)", isRequired: false);
+            await RegisterCommand(formatCommand);
+        }
 
-            foreach(var guild in _client.Guilds)
+        private async Task RegisterCommand(SlashCommandBuilder cardCommand)
+        {
+            var guildList = _settings.GetServersForSlashCommand(cardCommand.Name);
+            foreach(var guildId in guildList)
             {
-                var existingCommands = await guild.GetApplicationCommandsAsync();
-                var checkCommand = existingCommands.Where(c => c.Name == commandName);
-                if (!checkCommand.Any())
+                try
                 {
-                    try
-                    {
-                        await guild.CreateApplicationCommandAsync(cardCommand.Build());
-                    }
-                    catch (HttpException exc)
-                    {
-                        Console.WriteLine(exc.Message);
-                    }
+                    var guild = _client.GetGuild(guildId);
+                    await guild.CreateApplicationCommandAsync(cardCommand.Build());
+                }
+                catch (HttpException exc)
+                {
+                    Console.WriteLine(exc.Message);
                 }
             }
         }
