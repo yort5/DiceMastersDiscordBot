@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using Azure;
 using ChallongeSharp.Models.ViewModels;
 using ChallongeSharp.Models.ViewModels.Types;
 using DiceMastersDiscordBot.Entities;
@@ -87,6 +88,7 @@ namespace DiceMastersDiscordBot.Services
                 _client.Ready += Client_Ready;
                 _client.MessageReceived += DiscordMessageReceived;
                 _client.SlashCommandExecuted += SlashCommandHandler;
+                _client.ModalSubmitted += ModalResponseHandler;
 
                 // Connect the bot to Discord
                 string token = _settings.GetDiscordToken();
@@ -116,6 +118,50 @@ namespace DiceMastersDiscordBot.Services
             _logger.LogInformation("ServiceA has stopped.");
         }
 
+        private async Task Client_Ready()
+        {
+            var cardCommand = new SlashCommandBuilder()
+                .WithName("card")
+                .WithDescription("Lists out the info for a Dice Masters card.")
+                .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card", isRequired: true);
+            await RegisterCommand(cardCommand);
+
+            var formatCommand = new SlashCommandBuilder()
+                .WithName("format")
+                .WithDescription("Lists out the format for the next event in this channel.")
+                .AddOption("number", ApplicationCommandOptionType.String, "How many events in the future you want information for (default is 1)", isRequired: false);
+            await RegisterCommand(formatCommand);
+
+            var reportCommand = new SlashCommandBuilder()
+                .WithName("report")
+                .WithDescription("Report the results of a match.")
+                .AddOption("winner", ApplicationCommandOptionType.User, "Discord name of winning player", isRequired: true)
+                .AddOption("loser", ApplicationCommandOptionType.User, "Discord name of losing player", isRequired: true);
+            await RegisterCommand(reportCommand);
+
+            var submitCommand = new SlashCommandBuilder()
+                .WithName("submit")
+                .WithDescription("Submit a team for an event.");
+            await RegisterCommand(submitCommand);
+        }
+
+        private async Task RegisterCommand(SlashCommandBuilder cardCommand)
+        {
+            var guildList = _settings.GetServersForSlashCommand(cardCommand.Name);
+            foreach (var guildId in guildList)
+            {
+                try
+                {
+                    var guild = _client.GetGuild(guildId);
+                    await guild.CreateApplicationCommandAsync(cardCommand.Build());
+                }
+                catch (HttpException exc)
+                {
+                    Console.WriteLine(exc.Message);
+                }
+            }
+        }
+
         private async Task SlashCommandHandler(SocketSlashCommand command)
         {
             switch (command.Data.Name)
@@ -125,6 +171,12 @@ namespace DiceMastersDiscordBot.Services
                     break;
                 case "format":
                     await HandleFormatCommandAsync(command);
+                    break;
+                case "report":
+                    await HandleReportCommandAsync(command);
+                    break;
+                case "submit":
+                    await HandleSubmitCommandAsync(command);
                     break;
             }
         }
@@ -182,35 +234,147 @@ namespace DiceMastersDiscordBot.Services
             await command.RespondAsync(info);
         }
 
-        private async Task Client_Ready()
+        private async Task HandleSubmitCommandAsync(SocketSlashCommand command)
         {
-            var cardCommand = new SlashCommandBuilder()
-                .WithName("card")
-                .WithDescription("Lists out the info for a Dice Masters card.")
-                .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card", isRequired: true);
-            await RegisterCommand(cardCommand);
+            var mb = new ModalBuilder()
+                .WithTitle("Submit Team")
+                .WithCustomId("team_submit")
+                .AddTextInput("The TeamBuilder link for your team.", "team_link", placeholder: "http://tb.dicecoalition.com/");
 
-            var formatCommand = new SlashCommandBuilder()
-                .WithName("format")
-                .WithDescription("Lists out the format for the next event in this channel.")
-                .AddOption("number", ApplicationCommandOptionType.String, "How many events in the future you want information for (default is 1)", isRequired: false);
-            await RegisterCommand(formatCommand);
+            await command.RespondWithModalAsync(mb.Build());
         }
 
-        private async Task RegisterCommand(SlashCommandBuilder cardCommand)
+        private async Task ModalResponseHandler(SocketModal modal)
         {
-            var guildList = _settings.GetServersForSlashCommand(cardCommand.Name);
-            foreach(var guildId in guildList)
+            List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
+            string teamLink = modalComponents.First(x => x.CustomId == "team_link").Value;
+
+            EventUserInput eventUserInput = new EventUserInput();
+            eventUserInput.Here = DateTime.UtcNow.ToString();
+            eventUserInput.EventName = modal.Channel.Name;
+            eventUserInput.DiscordName = modal.User.Username;
+            string response = string.Empty;
+
+            eventUserInput.TeamLink = teamLink;
+
+            var dmEvent = _eventFactory.GetDiceMastersEvent(eventUserInput.EventName, _currentEventList);
+            response = dmEvent.SubmitTeamLink(eventUserInput);
+
+            await modal.RespondAsync(response);
+            await modal.User.SendMessageAsync($"The following team was successfully submitted for {eventUserInput.EventName}{Environment.NewLine}{eventUserInput.TeamLink}");
+
+        }
+
+        private async Task HandleReportCommandAsync(SocketSlashCommand command)
+        {
+            try
             {
-                try
+                if(!command.Data.Options.Any() || command.Data.Options.Count < 2)
                 {
-                    var guild = _client.GetGuild(guildId);
-                    await guild.CreateApplicationCommandAsync(cardCommand.Build());
+                    await command.RespondAsync("Error: unable to parse options.");
                 }
-                catch (HttpException exc)
+
+                var firstPlayerDiscordInfo = (SocketGuildUser)command.Data.Options.First().Value;
+                var secondPlayerDiscordInfo = (SocketGuildUser)command.Data.Options.Skip(1).First().Value;
+
+                var dmEvent = _eventFactory.GetDiceMastersEvent(command.Channel.Name, _currentEventList);
+                var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == command.Channel.Name);
+                string hackTheException = string.Empty;
+                var genericReportString = $"First player (winner) {firstPlayerDiscordInfo.Username}, Second player (loser) {secondPlayerDiscordInfo.Username}";
+
+                if (dmEvent is StandaloneChallongeEvent)
                 {
-                    Console.WriteLine(exc.Message);
+                    // yes, this is hacky, but trying to play and debug the bot at the same time. ;)
+                    string lastMark = "Start";
+                    string challongeTournamentName = dmManifest.ChallongeTournamentName;
+
+                    var scoreChannel = _client.GetChannel(dmManifest.ScoreKeeperChannelId) as IMessageChannel;
+                    if (scoreChannel != null)
+                    {
+                        await scoreChannel.SendMessageAsync(genericReportString);
+                    }
+
+                    var firstPlayerInfo = _sheetService.GetUserInfoFromDiscord(firstPlayerDiscordInfo.Username);
+                    var secondPlayerInfo = _sheetService.GetUserInfoFromDiscord(secondPlayerDiscordInfo.Username);
+
+                    var allPlayersChallongeInfo = await _challonge.GetAllParticipantsAsync(challongeTournamentName);
+                    var firstPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername.ToLower() == firstPlayerInfo.ChallongeName.ToLower());
+                    var secondPlayerChallongeInfo = allPlayersChallongeInfo.FirstOrDefault(p => p.ChallongeUsername.ToLower() == secondPlayerInfo.ChallongeName.ToLower());
+                    lastMark = "Players sorted";
+
+                    var allMatches = await _challonge.GetAllMatchesAsync(challongeTournamentName);
+                    var openMatches = allMatches.Where(m => m.State == "open").ToList();
+
+                    lastMark = "Find open match";
+                    if (openMatches.Count() > 1)
+                    {
+                        lastMark = "More than one open match returned";
+                        bool playerOneisOne = true;
+                        var possibleMatch = allMatches.Where(m => m.Player1Id == firstPlayerChallongeInfo.Id && m.Player2Id == secondPlayerChallongeInfo.Id).ToList();
+                        lastMark = "1st possibleMatch";
+                        if (!possibleMatch.Any())
+                        {
+                            lastMark = "1st no possibleMatch";
+                            playerOneisOne = false;
+                            possibleMatch = allMatches.Where(m => m.Player1Id == secondPlayerChallongeInfo.Id && m.Player2Id == firstPlayerChallongeInfo.Id).ToList();
+                            lastMark = "2nd possibleMatch";
+                        }
+                        if (possibleMatch.Any() && possibleMatch.Count() == 1)
+                        {
+                            lastMark = "Found the match";
+                            var theMatch = possibleMatch.FirstOrDefault();
+                            var result = await _challonge.UpdateMatchAsync(challongeTournamentName, theMatch.Id.GetValueOrDefault(), 1, 0);
+                            lastMark = "Reported the match";
+
+                            var confirmedWinner = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.WinnerId);
+                            var confirmedLoser = allPlayersChallongeInfo.FirstOrDefault(p => p.Id == result.LoserId);
+
+                            if (confirmedWinner != null && confirmedLoser != null)
+                            {
+                                await command.RespondAsync($"Received verification that Challonge user {confirmedWinner.ChallongeUsername} won over Challonge user {confirmedLoser.ChallongeUsername}");
+                            }
+                            else
+                            {
+                                await command.RespondAsync($"Reported for {firstPlayerInfo.DiscordName} and {secondPlayerInfo.DiscordName} to the tournament organizers to be entered manually in Challonge.");
+                            }
+                            lastMark = "Winner and loser reported";
+                        }
+                        else
+                        {
+                            await command.RespondAsync($"Sorry, unable to retrieve the match information for this pair of players.");
+                        }
+                    }
+                    else
+                    {
+                        await command.RespondAsync($"Reporting last match of the round for {firstPlayerInfo.DiscordName} and {secondPlayerInfo.DiscordName} for Challonge reasons.");
+                        // Because Challonge automatically populates the next bracket as soon as the last score is reported and then you can't change it
+                        // don't autoreport the last score, instead send it to the TO to let them do manually
+                        string roundString = "?";
+                        try
+                        {
+                            // lazy way to make sure it doesn't blow
+                            roundString = openMatches.FirstOrDefault().Round.ToString();
+                        }
+                        catch { }
+
+                        foreach (var toId in dmManifest.EventOrganizerIDList)
+                        {
+                            ulong toDiscordUserId;
+                            ulong.TryParse(toId, out toDiscordUserId);
+                            var toDiscordUser = _client.GetUser(toDiscordUserId);
+                            await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{genericReportString}");
+                        }
+                        if (scoreChannel != null)
+                        {
+                            await scoreChannel.SendMessageAsync("-----------------");
+                        }
+                    }
                 }
+            }
+            catch (Exception exc)
+            {
+                await command.RespondAsync("Dag Nabbit - there was an error reporting the score. Most of the time it's just Challonge being grouchy, but the TOs will sort it out.");
+
             }
         }
 
