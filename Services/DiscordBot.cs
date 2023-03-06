@@ -143,6 +143,24 @@ namespace DiceMastersDiscordBot.Services
                 .WithName("submit")
                 .WithDescription("Submit a team for an event.");
             await RegisterCommand(submitCommand);
+
+            var tradeCommand = new SlashCommandBuilder()
+                .WithName("trade")
+                .WithDescription("List a card you have available for trade OR want to trade for.")
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("want")
+                    .WithDescription("List a card that you WANT and will trade for or buy.")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card")
+                )
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("have")
+                    .WithDescription("List a card that you HAVE and want to trade or sell.")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card")
+                );
+            await RegisterCommand(tradeCommand);
+
         }
 
         private async Task RegisterCommand(SlashCommandBuilder cardCommand)
@@ -178,9 +196,13 @@ namespace DiceMastersDiscordBot.Services
                 case "submit":
                     await HandleSubmitCommandAsync(command);
                     break;
+                case "trade":
+                    await HandleTradeCommandAsync(command);
+                    break;
             }
         }
 
+        #region Slash Command Handlers
         private async Task HandleCardCommandAsync(SocketSlashCommand command, bool imageOnly = false)
         {
             try
@@ -244,25 +266,38 @@ namespace DiceMastersDiscordBot.Services
             await command.RespondWithModalAsync(mb.Build());
         }
 
-        private async Task ModalResponseHandler(SocketModal modal)
+        private async Task HandleTradeCommandAsync(SocketSlashCommand command)
         {
-            List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
-            string teamLink = modalComponents.First(x => x.CustomId == "team_link").Value;
+            var haveOrWant = command.Data.Options.First().Name;
+            var cardCode = command.Data.Options.First().Options.First().Value.ToString();
 
-            EventUserInput eventUserInput = new EventUserInput();
-            eventUserInput.Here = DateTime.UtcNow.ToString();
-            eventUserInput.EventName = modal.Channel.Name;
-            eventUserInput.DiscordName = modal.User.Username;
-            string response = string.Empty;
+            switch(haveOrWant)
+            {
+                case "have":
+                    {
+                        var mb = new ModalBuilder()
+                            .WithTitle("Card for sale or trade.")
+                            .WithCustomId("card_have")
+                            .AddTextInput("The TeamBuilder code for the card you HAVE.", "card_code", placeholder: "AVX001")
+                            .AddTextInput("Foil or NonFoil?", "card_foil", placeholder: "Foil")
+                            .AddTextInput("Sell, Trade, or Both?", "card_method", placeholder: "Both");
 
-            eventUserInput.TeamLink = teamLink;
-
-            var dmEvent = _eventFactory.GetDiceMastersEvent(eventUserInput.EventName, _currentEventList);
-            response = dmEvent.SubmitTeamLink(eventUserInput);
-
-            await modal.RespondAsync(response);
-            await modal.User.SendMessageAsync($"The following team was successfully submitted for {eventUserInput.EventName}{Environment.NewLine}{eventUserInput.TeamLink}");
-
+                        await command.RespondWithModalAsync(mb.Build());
+                    }
+                    break;
+                case "want":
+                    {
+                        var mb = new ModalBuilder()
+                            .WithTitle("Card WANTED")
+                            .WithCustomId("card_want")
+                            .AddTextInput("The TeamBuilder code for the card you WANT.", "card_code", placeholder: "AVX001")
+                            .AddTextInput("Foil or NonFoil?", "card_foil", placeholder: "Foil")
+                            .AddTextInput("Sell, Trade, or Both?", "card_method", placeholder: "Both");
+                        Modal thing = mb.Build();
+                        await command.RespondWithModalAsync(mb.Build());
+                    }
+                    break;
+            }
         }
 
         private async Task HandleReportCommandAsync(SocketSlashCommand command)
@@ -377,6 +412,61 @@ namespace DiceMastersDiscordBot.Services
 
             }
         }
+        #endregion
+
+        #region Modal Response Handlers
+        private async Task ModalResponseHandler(SocketModal modal)
+        {
+            switch (modal.Data.CustomId)
+            {
+                case "team_submit":
+                    await HandleTeamSubmitModalResponseAsync(modal);
+                    break;
+                case "card_have":
+                    await HandleCardHaveModalResponseAsync(modal);
+                    break;
+                case "card_want":
+                    await HandleCardWantModalResponseAsync(modal);
+                    break;
+            }
+        }
+
+        private async Task HandleTeamSubmitModalResponseAsync(SocketModal modal)
+        {
+            List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
+            string teamLink = modalComponents.First(x => x.CustomId == "team_link").Value;
+
+            EventUserInput eventUserInput = new EventUserInput();
+            eventUserInput.Here = DateTime.UtcNow.ToString();
+            eventUserInput.EventName = modal.Channel.Name;
+            eventUserInput.DiscordName = modal.User.Username;
+            string response = string.Empty;
+
+            eventUserInput.TeamLink = teamLink;
+
+            var dmEvent = _eventFactory.GetDiceMastersEvent(eventUserInput.EventName, _currentEventList);
+            response = dmEvent.SubmitTeamLink(eventUserInput);
+
+            await modal.RespondAsync(response);
+            await modal.User.SendMessageAsync($"The following team was successfully submitted for {eventUserInput.EventName}{Environment.NewLine}{eventUserInput.TeamLink}");
+        }
+
+        private async Task HandleCardHaveModalResponseAsync(SocketModal modal)
+        {
+            List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
+            string cardCode = modalComponents.First(x => x.CustomId == "card_code").Value;
+            string cardFoil = modalComponents.First(x => x.CustomId == "card_foil").Value;
+            string cardMethod = modalComponents.First(x => x.CustomId == "card_method").Value;
+        }
+
+        private async Task HandleCardWantModalResponseAsync(SocketModal modal)
+        {
+            List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
+            string cardCode = modalComponents.First(x => x.CustomId == "card_code").Value;
+            string cardFoil = modalComponents.First(x => x.CustomId == "card_foil").Value;
+            string cardMethod = modalComponents.First(x => x.CustomId == "card_method").Value;
+        }
+        #endregion
 
         private async Task DiscordMessageReceived(SocketMessage message)
         {
