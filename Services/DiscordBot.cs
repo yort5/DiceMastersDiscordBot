@@ -80,7 +80,8 @@ namespace DiceMastersDiscordBot.Services
 
             try
             {
-                _client = new DiscordSocketClient();
+                var discordConfig = new DiscordSocketConfig { GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent };
+                _client = new DiscordSocketClient(discordConfig);
 
                 _client.Log += Log;
 
@@ -144,6 +145,16 @@ namespace DiceMastersDiscordBot.Services
                 .WithDescription("Submit a team for an event.");
             await RegisterCommand(submitCommand);
 
+            var listCommand = new SlashCommandBuilder()
+                .WithName("list")
+                .WithDescription("List the players registered for an event.");
+            await RegisterCommand(listCommand);
+
+            var teamListCommand = new SlashCommandBuilder()
+                .WithName("teams")
+                .WithDescription("List the teams of players registered for an event.");
+            // await RegisterCommand(teamListCommand);
+
             var tradeCommand = new SlashCommandBuilder()
                 .WithName("trade")
                 .WithDescription("List a card you have available for trade OR want to trade for.")
@@ -163,19 +174,24 @@ namespace DiceMastersDiscordBot.Services
 
         }
 
-        private async Task RegisterCommand(SlashCommandBuilder cardCommand)
+        private async Task RegisterCommand(SlashCommandBuilder cardCommand, bool devOverride = false)
         {
-            var guildList = _settings.GetServersForSlashCommand(cardCommand.Name);
-            foreach (var guildId in guildList)
+            // Running the registration locally seems to break that registration in the deployed version.
+            // Add a switch to turn off registration locally, but allow an override for testing new functionality.
+            if (!_environment.IsDevelopment() || devOverride)
             {
-                try
+                var guildList = _settings.GetServersForSlashCommand(cardCommand.Name);
+                foreach (var guildId in guildList)
                 {
-                    var guild = _client.GetGuild(guildId);
-                    await guild.CreateApplicationCommandAsync(cardCommand.Build());
-                }
-                catch (HttpException exc)
-                {
-                    Console.WriteLine(exc.Message);
+                    try
+                    {
+                        var guild = _client.GetGuild(guildId);
+                        await guild.CreateApplicationCommandAsync(cardCommand.Build());
+                    }
+                    catch (HttpException exc)
+                    {
+                        Console.WriteLine(exc.Message);
+                    }
                 }
             }
         }
@@ -195,6 +211,9 @@ namespace DiceMastersDiscordBot.Services
                     break;
                 case "submit":
                     await HandleSubmitCommandAsync(command);
+                    break;
+                case "list":
+                    await HandleListPlayersCommandAsync(command);
                     break;
                 case "trade":
                     await HandleTradeCommandAsync(command);
@@ -264,6 +283,53 @@ namespace DiceMastersDiscordBot.Services
                 .AddTextInput("The TeamBuilder link for your team.", "team_link", placeholder: "http://tb.dicecoalition.com/");
 
             await command.RespondWithModalAsync(mb.Build());
+        }
+
+        private async Task HandleListPlayersCommandAsync(SocketSlashCommand command)
+        {
+            try
+            {
+                var dmEvent = _eventFactory.GetDiceMastersEvent(command.Channel.Name, _currentEventList);
+
+                StringBuilder playerListString = new StringBuilder();
+                if (dmEvent.UsesChallonge)
+                {
+                    await command.RespondAsync("Retrieving list of players registered in Challonge...");
+                    var participantList = await dmEvent.GetCurrentPlayerList();
+                    playerListString.AppendLine($"There are currently {participantList.Count} humans registered (and no robots):");
+                    foreach (var player in participantList.OrderBy(p => p.ChallongeName))
+                    {
+                        if (string.IsNullOrEmpty(player.DiscordName))
+                        {
+                            playerListString.AppendLine(player.ChallongeName);
+                        }
+                        else
+                        {
+                            playerListString.AppendLine($"{player.ChallongeName.PadRight(20)}  (Discord - {player.DiscordName})");
+                        }
+                    }
+                    playerListString.AppendLine("---");
+                    playerListString.AppendLine("Note: the first column is the list of usernames from Challonge.");
+                    playerListString.AppendLine("If your Challonge name does not have a Discord name in the second column,");
+                    playerListString.AppendLine("the bot does not know what your Challonge name is, and will not be able to report your scores.");
+                    playerListString.AppendLine("Please let the bot know who you are on Challonge with `.challonge mychallongename`)");
+                }
+                else
+                {
+                    var participantList = await dmEvent.GetCurrentPlayerList();
+                    playerListString.AppendLine($"There are currently {participantList.Count} humans registered (and no robots):");
+                    foreach (var player in participantList.OrderBy(p => p.DiscordName))
+                    {
+                        playerListString.AppendLine(player.DiscordName);
+                    }
+                }
+                await command.RespondAsync(playerListString.ToString());
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError($"Exception trying to get tournament list from Challonge: {exc.Message}");
+                await command.RespondAsync("Sorry, there was an issue getting the player list from Challonge.");
+            }
         }
 
         private async Task HandleTradeCommandAsync(SocketSlashCommand command)
