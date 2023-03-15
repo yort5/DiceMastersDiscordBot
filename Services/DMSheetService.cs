@@ -28,6 +28,8 @@ namespace DiceMastersDiscordBot.Services
         private const string MasterYouTubeSheetName = "YouTubeSubs";
         private const string MasterRSSFeedSheetName = "RSSFeeds";
         private const string DROPPED = "DROPPED";
+        private const string TradingHaveSheetName = "Trading - Haves";
+        private const string TradingWantSheetName = "Trading - Wants";
 
         public DMSheetService(ILoggerFactory loggerFactory, IAppSettings appSettings)
         {
@@ -89,7 +91,7 @@ namespace DiceMastersDiscordBot.Services
                     if (record.Contains(userName))
                     {
                         var index = existingRecords.Values.IndexOf(record);
-                        range = $"{sheet}!A{index + 1}";
+                        range = $"{sheet}!A{index + 1}:E{index+1}";
                         existingEntryFound = true;
                         break;
                     }
@@ -397,7 +399,7 @@ namespace DiceMastersDiscordBot.Services
                 try
                 {
                     // Define request parameters.
-                    var range = $"{set.SetCode}!A:P";
+                    var range = $"{set.SetCode}!A:Z";
 
                     // load the data
                     var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetCommunitySheetId(), range);
@@ -412,6 +414,7 @@ namespace DiceMastersDiscordBot.Services
                             if (values.IndexOf(record) == 0) continue;
                             CommunityCardInfo card = new CommunityCardInfo
                             {
+                                SetCode = set.SetCode,
                                 TeamBuilderId = GetStringFromRecord(record, 0),
                                 CardTitle = GetStringFromRecord(record, 1),
                                 CardSubtitle = GetStringFromRecord(record, 2),
@@ -423,7 +426,19 @@ namespace DiceMastersDiscordBot.Services
                                 StatLine = GetStringFromRecord(record, 8),
                                 CardImageUrl = GetStringFromRecord(record, 9),
                                 DiceImageUrl = GetStringFromRecord(record, 10),
-                                Nickname = GetStringFromRecord(record, 11)
+                                Nickname = GetStringFromRecord(record, 11),
+                                ImageFolder = GetStringFromRecord(record, 12),
+                                CardNumber = GetStringFromRecord(record, 13),
+                                //PlaceholderO_14 = GetStringFromRecord(record, 14),
+                                //PlaceholderP_15 = GetStringFromRecord(record, 15),
+                                //HaveNonFoilToSell = GetStringFromRecord(record, 16),
+                                //HaveNonFoilToTrade = GetStringFromRecord(record, 17),
+                                //HaveFoilToSell = GetStringFromRecord(record, 18),
+                                //HaveFoilToTrade = GetStringFromRecord(record, 19),
+                                //WantNonFoilToBuy = GetStringFromRecord(record, 20),
+                                //WantNonFoilForTrade = GetStringFromRecord(record, 21),
+                                //WantFoilToBuy = GetStringFromRecord(record, 22),
+                                //WantFoilForTrade = GetStringFromRecord(record, 23),
                             };
                             allCommunityCards.Add(card);
                         }
@@ -439,6 +454,177 @@ namespace DiceMastersDiscordBot.Services
                 }
             }
             return allCommunityCards;
+        }
+
+        internal TradeLists LoadAllTrades()
+        {
+            TradeLists tradeList = new TradeLists();
+            tradeList.Haves = new List<TradeInfo>();
+            tradeList.Wants = new List<TradeInfo>();
+
+            var allTradeSheets = LoadTradeSheets();
+            foreach (var tradeSheet in allTradeSheets)
+            {
+                tradeList.Haves.AddRange(LoadTradeSheet(tradeSheet, TradingHaveSheetName));
+                tradeList.Wants.AddRange(LoadTradeSheet(tradeSheet, TradingWantSheetName));
+            }
+            return tradeList;
+        }
+
+        internal List<TradeSheet> LoadTradeSheets()
+        {
+            List<TradeSheet> tradeSheets = new List<TradeSheet>();
+            try
+            {
+                // Define request parameters.
+                var range = $"TradeSheets!A:E";
+
+                // load the data
+                var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetCommunitySheetId(), range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+
+
+                foreach (var record in values)
+                {
+                    try
+                    {
+                        if (values.IndexOf(record) <= 1) continue;  // skip first two rows
+                        var fullUrl = GetStringFromRecord(record, 3);
+                        TradeSheet tSheet = new TradeSheet
+                        {
+                            Name = GetStringFromRecord(record, 0),
+                            DiscordUsername = GetStringFromRecord(record, 1),
+                            GeoLocation = GetStringFromRecord(record, 2),
+                            LastUpdate = GetStringFromRecord(record, 4),
+                        };
+                        var fullUri = new Uri(fullUrl);
+                        tSheet.SheetId = fullUri.Segments.Skip(3).First().Replace('/', ' ').TrimEnd();
+                        tradeSheets.Add(tSheet);
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception loading trade sheets: {exc.Message}");
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+            }
+            return tradeSheets;
+
+        }
+
+        internal List<TradeInfo> LoadTradeSheet(TradeSheet tradeSheet, string sheetName)
+        {
+            List<TradeInfo> tradeInfoCards = new List<TradeInfo>();
+            try
+            {
+                // Define request parameters.
+                var range = $"{sheetName}!A:G";
+
+                // load the data
+                var sheetRequest = _sheetService.Spreadsheets.Values.Get(tradeSheet.SheetId, range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+
+                var sheetDiscordUser = string.Empty;
+                foreach (var record in values)
+                {
+                    try
+                    {
+                        if (values.IndexOf(record) == 0)
+                        {
+                            sheetDiscordUser = GetStringFromRecord(record, 1);
+                            continue;
+                        }
+                        if (values.IndexOf(record) <= 3) continue;  // skip lines 2-4
+                        TradeInfo tradeCard = new TradeInfo
+                        {
+                            TeamBuilderId = GetStringFromRecord(record, 0),
+                            CardName = GetStringFromRecord(record, 1),
+                            NonFoil = GetBooleanFromRecord(record, 2),
+                            Foil = GetBooleanFromRecord(record, 3),
+                            SellOrBuy = GetBooleanFromRecord(record, 4),
+                            Trade = GetBooleanFromRecord(record, 5),
+                            DiscordUsername = !string.IsNullOrEmpty(sheetDiscordUser) ? sheetDiscordUser : GetStringFromRecord(record, 6),
+                        };
+                        if(!string.IsNullOrEmpty(tradeCard.TeamBuilderId))
+                        {
+                            tradeInfoCards.Add(tradeCard);
+                        }
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception loading trade sheet: {exc.Message}");
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+            }
+            return tradeInfoCards;
+        }
+
+        internal bool UpdateCommunityTradeCard(TradeInfo cardTradeInfo, bool isHave)
+        {
+            try
+            {
+                var sheetName = isHave ? TradingHaveSheetName : TradingWantSheetName;
+                var communitySheetId = _settings.GetCommunitySheetId();
+                var range = $"{sheetName}!A:Z";
+
+                // first check to see if this person already has a submission
+                var findExistingRequest = _sheetService.Spreadsheets.Values.Get(communitySheetId, range);
+                var existingCardRecords = findExistingRequest.Execute();
+                bool existingEntryFound = false;
+                foreach (var record in existingCardRecords.Values)
+                {
+                    if (record[0].ToString().Equals(cardTradeInfo.TeamBuilderId, StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        var index = existingCardRecords.Values.IndexOf(record);
+                        range = $"{sheetName}!A{index + 1}:G{index + 1}";
+                        existingEntryFound = true;
+                        break;
+                    }
+                }
+
+                var oblist = new List<object>()
+                {
+                    cardTradeInfo.TeamBuilderId,
+                    cardTradeInfo.CardName,
+                    cardTradeInfo.NonFoil,
+                    cardTradeInfo.Foil,
+                    cardTradeInfo.SellOrBuy,
+                    cardTradeInfo.Trade,
+                };
+                var valueRange = new ValueRange();
+                valueRange.Values = new List<IList<object>> { oblist };
+
+                if (existingEntryFound)
+                {
+                    // Performing Update Operation...
+                    var updateRequest = _sheetService.Spreadsheets.Values.Update(valueRange, communitySheetId, range);
+                    updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                    var appendReponse = updateRequest.Execute();
+                    return true;
+                }
+                else
+                {
+                    // Append the above record...
+                    var appendRequest = _sheetService.Spreadsheets.Values.Append(valueRange, communitySheetId, range);
+                    appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
+                    var appendReponse = appendRequest.Execute();
+                    return true;
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+                return false;
+            }
         }
 
         #region Helper Methods
@@ -885,9 +1071,16 @@ namespace DiceMastersDiscordBot.Services
             }
         }
 
-        private string GetStringFromRecord(IList<object> record, int index)
+        private static string GetStringFromRecord(IList<object> record, int index)
         {
             return (record.Count >= (index+1) && record[index] != null) ? record[index].ToString() : string.Empty;
+        }
+
+        private static bool GetBooleanFromRecord(IList<object> record, int index)
+        {
+            var stringValue = (record.Count >= (index + 1) && record[index] != null) ? record[index].ToString() : string.Empty;
+            Boolean.TryParse(stringValue, out bool isTrue);
+            return isTrue;
         }
         #endregion
     }

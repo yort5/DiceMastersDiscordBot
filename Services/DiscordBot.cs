@@ -51,6 +51,7 @@ namespace DiceMastersDiscordBot.Services
 
         private List<EventManifest> _currentEventList = new List<EventManifest>();
         private List<CommunityCardInfo> _allCommunityCardList = new List<CommunityCardInfo>();
+        private TradeLists _tradeLists = new TradeLists();
 
         private DiscordSocketClient _client;
 
@@ -99,6 +100,7 @@ namespace DiceMastersDiscordBot.Services
                 // Block this task until the program is closed.
                 //await Task.Delay(-1, stoppingToken);
 
+                var lastUpdatedTicks = DateTime.MinValue.ToUniversalTime().Ticks;
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     _logger.LogInformation("DiscordBot is doing background work.");
@@ -106,7 +108,15 @@ namespace DiceMastersDiscordBot.Services
                     LoadCurrentEvents();
                     CheckRSSFeeds();
                     CheckYouTube();
-                    LoadCardInfo();
+
+                    // only do these once a day
+                    var currentDayTicks = DateTime.Today.ToUniversalTime().Ticks;
+                    if (lastUpdatedTicks < currentDayTicks)
+                    {
+                        lastUpdatedTicks = currentDayTicks;
+                        LoadCardInfo();
+                        LoadTradeLists();
+                    }
 
                     await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
                 }
@@ -163,12 +173,28 @@ namespace DiceMastersDiscordBot.Services
                     .WithDescription("List a card that you WANT and will trade for or buy.")
                     .WithType(ApplicationCommandOptionType.SubCommand)
                     .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card")
+                    .AddOption("foil", ApplicationCommandOptionType.Boolean, "Is this a foil version of the card?")
+                    .AddOption(new SlashCommandOptionBuilder()
+                        .WithName("type")
+                        .WithDescription("Are you looking to trade, buy, or either?")
+                        .AddChoice("Trade", 1)
+                        .AddChoice("Buy", 2)
+                        .AddChoice("Either", 3)
+                        .WithType(ApplicationCommandOptionType.Integer))
                 )
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("have")
                     .WithDescription("List a card that you HAVE and want to trade or sell.")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card")
+                    .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card", isRequired: true)
+                    .AddOption("foil", ApplicationCommandOptionType.Boolean, "Is this a foil version of the card?")
+                    .AddOption(new SlashCommandOptionBuilder()
+                        .WithName("type")
+                        .WithDescription("Are you looking to trade, sell, or either?")
+                        .AddChoice("Trade", 1)
+                        .AddChoice("Sell", 2)
+                        .AddChoice("Either", 3)
+                        .WithType(ApplicationCommandOptionType.Integer))
                 );
             await RegisterCommand(tradeCommand);
 
@@ -336,31 +362,39 @@ namespace DiceMastersDiscordBot.Services
         {
             var haveOrWant = command.Data.Options.First().Name;
             var cardCode = command.Data.Options.First().Options.First().Value.ToString();
+            var isFoil = command.Data.Options.Where(o => o.Name == "foil");
+            var type = command.Data.Options.Where(o => o.Name == "type");
 
-            switch(haveOrWant)
+            switch (haveOrWant)
             {
                 case "have":
                     {
-                        var mb = new ModalBuilder()
-                            .WithTitle("Card for sale or trade.")
-                            .WithCustomId("card_have")
-                            .AddTextInput("The TeamBuilder code for the card you HAVE.", "card_code", placeholder: "AVX001")
-                            .AddTextInput("Foil or NonFoil?", "card_foil", placeholder: "Foil")
-                            .AddTextInput("Sell, Trade, or Both?", "card_method", placeholder: "Both");
-
-                        await command.RespondWithModalAsync(mb.Build());
+                        var possibleMatches = _tradeLists.Wants.Where(c => c.TeamBuilderId.ToLower() == cardCode.ToLower());
+                        if (possibleMatches.Any())
+                        {
+                            StringBuilder possibleUserMatches = new StringBuilder();
+                            var users = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
+                            await command.RespondAsync($"We found the following users may be possible matches: {Environment.NewLine}{users}");
+                        }
+                        else
+                        {
+                            await command.RespondAsync("Sorry, no matches found");
+                        }
                     }
                     break;
                 case "want":
                     {
-                        var mb = new ModalBuilder()
-                            .WithTitle("Card WANTED")
-                            .WithCustomId("card_want")
-                            .AddTextInput("The TeamBuilder code for the card you WANT.", "card_code", placeholder: "AVX001")
-                            .AddTextInput("Foil or NonFoil?", "card_foil", placeholder: "Foil")
-                            .AddTextInput("Sell, Trade, or Both?", "card_method", placeholder: "Both");
-                        Modal thing = mb.Build();
-                        await command.RespondWithModalAsync(mb.Build());
+                        var possibleMatches = _tradeLists.Haves.Where(c => c.TeamBuilderId.ToLower() == cardCode.ToLower());
+                        if (possibleMatches.Any())
+                        {
+                            StringBuilder possibleUserMatches = new StringBuilder();
+                            var users = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
+                            await command.RespondAsync($"We found the following users may be possible matches: {Environment.NewLine}{users}");
+                        }
+                        else
+                        {
+                            await command.RespondAsync("Sorry, no matches found");
+                        }
                     }
                     break;
             }
@@ -488,15 +522,15 @@ namespace DiceMastersDiscordBot.Services
                 case "team_submit":
                     await HandleTeamSubmitModalResponseAsync(modal);
                     break;
-                case "card_have":
-                    await HandleCardHaveModalResponseAsync(modal);
-                    break;
-                case "card_want":
-                    await HandleCardWantModalResponseAsync(modal);
-                    break;
+                //case "card_have":
+                //    await HandleCardHaveModalResponseAsync(modal);
+                //    break;
+                //case "card_want":
+                //    await HandleCardWantModalResponseAsync(modal);
+                //    break;
             }
         }
-
+        
         private async Task HandleTeamSubmitModalResponseAsync(SocketModal modal)
         {
             List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
@@ -516,14 +550,29 @@ namespace DiceMastersDiscordBot.Services
             await modal.RespondAsync(response);
             await modal.User.SendMessageAsync($"The following team was successfully submitted for {eventUserInput.EventName}{Environment.NewLine}{eventUserInput.TeamLink}");
         }
-
+        /*
         private async Task HandleCardHaveModalResponseAsync(SocketModal modal)
         {
             List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
             string cardCode = modalComponents.First(x => x.CustomId == "card_code").Value;
             string cardFoil = modalComponents.First(x => x.CustomId == "card_foil").Value;
             string cardMethod = modalComponents.First(x => x.CustomId == "card_method").Value;
+
+            var cardInfo = GetCommunityCardInfoFromCodeString(cardCode);
+            if(!cardInfo.HaveFoilToSell.Contains(modal.User.Username))
+            {
+                cardInfo.HaveFoilToSell = string.IsNullOrEmpty(cardInfo.HaveFoilToSell) ? modal.User.Username : $"{cardInfo.HaveFoilToSell},{modal.User.Username}";
+            }
+            // modify
+            var result = _sheetService.UpdateCommunityCard(cardInfo);
+
+            await modal.RespondAsync($"User {modal.User.Username} has a {cardInfo.TeamBuilderId} for sale/trade!");
+            if (string.IsNullOrEmpty(cardInfo.WantFoilForTrade))
+            {
+                await modal.RespondAsync($"Found these users that have a FOIL for TRADE: {cardInfo.WantFoilForTrade}");
+            }
         }
+        */
 
         private async Task HandleCardWantModalResponseAsync(SocketModal modal)
         {
@@ -533,6 +582,11 @@ namespace DiceMastersDiscordBot.Services
             string cardMethod = modalComponents.First(x => x.CustomId == "card_method").Value;
         }
         #endregion
+
+        private void LoadTradeLists()
+        {
+            _tradeLists = _sheetService.LoadAllTrades();
+        }
 
         private async Task DiscordMessageReceived(SocketMessage message)
         {
@@ -1407,6 +1461,17 @@ namespace DiceMastersDiscordBot.Services
             var fullCardInfo = _allCommunityCardList.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
 
             return new CardInfo { TeamBuilderId = diceIdString, DiceCount = diceCount, FullCardInfo = fullCardInfo ?? new CommunityCardInfo { TeamBuilderId = teamBuilderId } };
+        }
+
+        private CommunityCardInfo GetCommunityCardInfoFromCodeString(string codeString)
+        {
+            var digits = new string(codeString.Where(s => char.IsDigit(s)).ToArray());
+            var letters = new string(codeString.Where(s => char.IsLetter(s)).ToArray());
+
+            var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
+            
+            return _allCommunityCardList.Single(c => c.TeamBuilderId.ToUpper() == teamBuilderId.ToUpper()
+            );
         }
 
         private Task Log(LogMessage msg)
