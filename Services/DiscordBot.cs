@@ -390,9 +390,20 @@ namespace DiceMastersDiscordBot.Services
                             try
                             {
                                 StringBuilder possibleUserMatches = new StringBuilder();
-                                var users = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
-                                var responseString = $"We found the following users may be possible matches: {Environment.NewLine}{users}";
-                                await command.RespondAsync(responseString);
+                                var usersString = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
+                                StringBuilder responseString = new StringBuilder();
+                                responseString.AppendLine("We found the following users may be possible matches:");
+                                foreach (var user in possibleMatches)
+                                {
+                                    string foil;
+                                    if (user.Foil && user.NonFoil) foil = "both foil and non-foil";
+                                    else foil = user.Foil ? "foil" : "non-foil";
+                                    string trade;
+                                    if (user.Trade && user.SellOrBuy) trade = "either trade or sell.";
+                                    else trade = user.Trade ? "trade" : "sell";
+                                    responseString.AppendLine($"{user.DiscordUsername} has a {foil} they are willing to {trade}");
+                                }
+                                await command.RespondAsync(responseString.ToString());
                             }
                             catch(Exception exc)
                             {
