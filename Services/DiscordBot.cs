@@ -97,8 +97,8 @@ namespace DiceMastersDiscordBot.Services
                 await _client.LoginAsync(TokenType.Bot, token);
                 await _client.StartAsync();
 
-                // Block this task until the program is closed.
-                //await Task.Delay(-1, stoppingToken);
+                // give the service a chance to start before moving on to computational things
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
 
                 var lastUpdatedTicks = DateTime.MinValue.ToUniversalTime().Ticks;
                 while (!stoppingToken.IsCancellationRequested)
@@ -387,9 +387,17 @@ namespace DiceMastersDiscordBot.Services
                         var possibleMatches = _tradeLists.Haves.Where(c => c.TeamBuilderId.ToLower() == cardCode.ToLower());
                         if (possibleMatches.Any())
                         {
-                            StringBuilder possibleUserMatches = new StringBuilder();
-                            var users = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
-                            await command.RespondAsync($"We found the following users may be possible matches: {Environment.NewLine}{users}");
+                            try
+                            {
+                                StringBuilder possibleUserMatches = new StringBuilder();
+                                var users = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
+                                var responseString = $"We found the following users may be possible matches: {Environment.NewLine}{users}";
+                                await command.RespondAsync(responseString);
+                            }
+                            catch(Exception exc)
+                            {
+                                _logger.LogError(exc.Message);
+                            }
                         }
                         else
                         {
