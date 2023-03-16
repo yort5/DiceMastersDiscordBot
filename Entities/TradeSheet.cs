@@ -7,5 +7,6 @@
         public string GeoLocation { get; set;}
         public string SheetId { get; set;}
         public string LastUpdate { get; set; }
+        public bool IncludeInBot { get; set; }
     }
 }

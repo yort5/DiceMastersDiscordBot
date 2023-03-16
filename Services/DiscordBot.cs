@@ -114,8 +114,8 @@ namespace DiceMastersDiscordBot.Services
                     if (lastUpdatedTicks < currentDayTicks)
                     {
                         lastUpdatedTicks = currentDayTicks;
-                        LoadCardInfo();
-                        LoadTradeLists();
+                        await LoadCardInfo();
+                        await LoadTradeLists();
                     }
 
                     await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
@@ -591,9 +591,9 @@ namespace DiceMastersDiscordBot.Services
         }
         #endregion
 
-        private void LoadTradeLists()
+        private async Task LoadTradeLists()
         {
-            _tradeLists = _sheetService.LoadAllTrades();
+            _tradeLists = await _sheetService.LoadAllTrades();
         }
 
         private async Task DiscordMessageReceived(SocketMessage message)
@@ -1413,11 +1413,11 @@ namespace DiceMastersDiscordBot.Services
             _currentEventList = _sheetService.LoadEventManifests();
         }
 
-        private void LoadCardInfo()
+        private async Task LoadCardInfo()
         {
             if(!_allCommunityCardList.Any())
             {
-                _allCommunityCardList = _sheetService.LoadAllCommunityCards();
+                _allCommunityCardList = await _sheetService.LoadAllCommunityCards();
             }
         }
 

@@ -15,6 +15,7 @@ using Google.Apis.Util.Store;
 using System.Linq;
 using DiceMastersDiscordBot.Properties;
 using System.Globalization;
+using System.Threading.Tasks;
 
 namespace DiceMastersDiscordBot.Services
 {
@@ -389,13 +390,15 @@ namespace DiceMastersDiscordBot.Services
             return allSets;
 
         }
-        internal List<CommunityCardInfo> LoadAllCommunityCards()
+        internal async Task<List<CommunityCardInfo>> LoadAllCommunityCards()
         {
             List<CommunityCardInfo> allCommunityCards = new List<CommunityCardInfo>();
 
             var sets = LoadAllSets();
             foreach (var set in sets)
             {
+                await Task.Run(() =>
+                {
                 try
                 {
                     // Define request parameters.
@@ -452,21 +455,25 @@ namespace DiceMastersDiscordBot.Services
                 {
                     Console.WriteLine(exc.Message);
                 }
+                });
             }
             return allCommunityCards;
         }
 
-        internal TradeLists LoadAllTrades()
+        internal async Task<TradeLists> LoadAllTrades()
         {
             TradeLists tradeList = new TradeLists();
             tradeList.Haves = new List<TradeInfo>();
             tradeList.Wants = new List<TradeInfo>();
 
             var allTradeSheets = LoadTradeSheets();
-            foreach (var tradeSheet in allTradeSheets)
+            foreach (var tradeSheet in allTradeSheets.Where(t => t.IncludeInBot))
             {
-                tradeList.Haves.AddRange(LoadTradeSheet(tradeSheet, TradingHaveSheetName));
-                tradeList.Wants.AddRange(LoadTradeSheet(tradeSheet, TradingWantSheetName));
+                await Task.Run(() =>
+                {
+                    tradeList.Haves.AddRange(LoadTradeSheet(tradeSheet, TradingHaveSheetName));
+                    tradeList.Wants.AddRange(LoadTradeSheet(tradeSheet, TradingWantSheetName));
+                });
             }
             return tradeList;
         }
@@ -477,13 +484,13 @@ namespace DiceMastersDiscordBot.Services
             try
             {
                 // Define request parameters.
-                var range = $"TradeSheets!A:E";
+                var range = $"TradeSheets!A:F";
 
                 // load the data
                 var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetCommunitySheetId(), range);
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
-
+                int blankRowExceptions = 0;
 
                 foreach (var record in values)
                 {
@@ -497,6 +504,7 @@ namespace DiceMastersDiscordBot.Services
                             DiscordUsername = GetStringFromRecord(record, 1),
                             GeoLocation = GetStringFromRecord(record, 2),
                             LastUpdate = GetStringFromRecord(record, 4),
+                            IncludeInBot = GetBooleanFromRecord(record, 5),
                         };
                         var fullUri = new Uri(fullUrl);
                         tSheet.SheetId = fullUri.Segments.Skip(3).First().Replace('/', ' ').TrimEnd();
@@ -505,6 +513,9 @@ namespace DiceMastersDiscordBot.Services
                     catch (Exception exc)
                     {
                         _logger.LogError($"Exception loading trade sheets: {exc.Message}");
+                        blankRowExceptions++;
+                        // if we've hit five rows of exceptions, we're probably past the valid data.
+                        if (blankRowExceptions >= 5) break;
                     }
                 }
             }
@@ -528,6 +539,7 @@ namespace DiceMastersDiscordBot.Services
                 var sheetRequest = _sheetService.Spreadsheets.Values.Get(tradeSheet.SheetId, range);
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
+                int blankRowExceptions = 0;
 
                 var sheetDiscordUser = string.Empty;
                 foreach (var record in values)
@@ -554,11 +566,19 @@ namespace DiceMastersDiscordBot.Services
                         {
                             tradeInfoCards.Add(tradeCard);
                         }
+                        else
+                        {
+                            blankRowExceptions++;
+                        }
                     }
                     catch (Exception exc)
                     {
                         _logger.LogError($"Exception loading trade sheet: {exc.Message}");
+                        blankRowExceptions++;
                     }
+
+                    // if we've hit five rows of exceptions, we're probably past the valid data.
+                    if (blankRowExceptions >= 5) break;
                 }
             }
             catch (Exception exc)
