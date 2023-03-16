@@ -173,14 +173,14 @@ namespace DiceMastersDiscordBot.Services
                     .WithDescription("List a card that you WANT and will trade for or buy.")
                     .WithType(ApplicationCommandOptionType.SubCommand)
                     .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card")
-                    .AddOption("foil", ApplicationCommandOptionType.Boolean, "Is this a foil version of the card?")
-                    .AddOption(new SlashCommandOptionBuilder()
-                        .WithName("type")
-                        .WithDescription("Are you looking to trade, buy, or either?")
-                        .AddChoice("Trade", 1)
-                        .AddChoice("Buy", 2)
-                        .AddChoice("Either", 3)
-                        .WithType(ApplicationCommandOptionType.Integer))
+                    //.AddOption("foil", ApplicationCommandOptionType.Boolean, "Is this a foil version of the card?")
+                    //.AddOption(new SlashCommandOptionBuilder()
+                    //    .WithName("type")
+                    //    .WithDescription("Are you looking to trade, buy, or either?")
+                    //    .AddChoice("Trade", 1)
+                    //    .AddChoice("Buy", 2)
+                    //    .AddChoice("Either", 3)
+                    //    .WithType(ApplicationCommandOptionType.Integer))
                 )
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("have")
@@ -364,6 +364,7 @@ namespace DiceMastersDiscordBot.Services
             var cardCode = command.Data.Options.First().Options.First().Value.ToString();
             var isFoil = command.Data.Options.Where(o => o.Name == "foil");
             var type = command.Data.Options.Where(o => o.Name == "type");
+            var fullCardInfo = _allCommunityCardList.FirstOrDefault(c => c.TeamBuilderId.ToLower() == cardCode.ToLower());
 
             switch (haveOrWant)
             {
@@ -392,6 +393,7 @@ namespace DiceMastersDiscordBot.Services
                                 StringBuilder possibleUserMatches = new StringBuilder();
                                 var usersString = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
                                 StringBuilder responseString = new StringBuilder();
+                                responseString.AppendLine($"{command.User.Username} is looking for {fullCardInfo.TeamBuilderId} - {fullCardInfo.Rarity} {fullCardInfo.CardTitle}");
                                 responseString.AppendLine("We found the following users may be possible matches:");
                                 foreach (var user in possibleMatches)
                                 {
