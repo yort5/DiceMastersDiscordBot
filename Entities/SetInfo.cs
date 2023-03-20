@@ -8,7 +8,7 @@ namespace DiceMastersDiscordBot.Entities
         }
 
         public string SetCode { get; set; }
-        public string Description { get; set; }
+        public string SetName { get; set; }
         public string IP { get; set; }
         public string DateReleased { get; set; }
         public bool IsModern { get; set; } = false;

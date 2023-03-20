@@ -16,6 +16,7 @@ using System.Linq;
 using DiceMastersDiscordBot.Properties;
 using System.Globalization;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace DiceMastersDiscordBot.Services
 {
@@ -369,7 +370,7 @@ namespace DiceMastersDiscordBot.Services
                         SetInfo card = new SetInfo
                         {
                             SetCode = GetStringFromRecord(record, 0),
-                            Description = GetStringFromRecord(record, 1),
+                            SetName = GetStringFromRecord(record, 1),
                             IP = GetStringFromRecord(record, 2),
                             DateReleased = GetStringFromRecord(record, 3),
                             IsModern = GetStringFromRecord(record, 4) == "1",
@@ -390,77 +391,91 @@ namespace DiceMastersDiscordBot.Services
             return allSets;
 
         }
-        internal async Task<List<CommunityCardInfo>> LoadAllCommunityCards()
+        internal async Task<CommunityInfo> LoadCommunityInfo()
         {
-            List<CommunityCardInfo> allCommunityCards = new List<CommunityCardInfo>();
+            CommunityInfo communityInfo = new CommunityInfo();
+            communityInfo.Cards = new List<CommunityCardInfo>();
 
-            var sets = LoadAllSets();
-            foreach (var set in sets)
+            communityInfo.Sets = LoadAllSets();
+            foreach (var set in communityInfo.Sets)
             {
                 await Task.Run(() =>
                 {
-                try
-                {
-                    // Define request parameters.
-                    var range = $"{set.SetCode}!A:Z";
-
-                    // load the data
-                    var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetCommunitySheetId(), range);
-                    var sheetResponse = sheetRequest.Execute();
-                    var values = sheetResponse.Values;
-
-
-                    foreach (var record in values)
+                    try
                     {
-                        try
+                        // Define request parameters.
+                        var range = $"{set.SetCode}!A:Z";
+
+                        // load the data
+                        var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetCommunitySheetId(), range);
+                        var sheetResponse = sheetRequest.Execute();
+                        var values = sheetResponse.Values;
+
+                        foreach (var record in values)
                         {
-                            if (values.IndexOf(record) == 0) continue;
-                            CommunityCardInfo card = new CommunityCardInfo
+                            int blankRowExceptions = 0;
+                            try
                             {
-                                SetCode = set.SetCode,
-                                TeamBuilderId = GetStringFromRecord(record, 0),
-                                CardTitle = GetStringFromRecord(record, 1),
-                                CardSubtitle = GetStringFromRecord(record, 2),
-                                PurchaseCost = GetStringFromRecord(record, 3),
-                                EnergyType = GetStringFromRecord(record, 4),
-                                Rarity = GetStringFromRecord(record, 5),
-                                Affiliation = GetStringFromRecord(record, 6),
-                                AbilityText = GetStringFromRecord(record, 7),
-                                StatLine = GetStringFromRecord(record, 8),
-                                CardImageUrl = GetStringFromRecord(record, 9),
-                                DiceImageUrl = GetStringFromRecord(record, 10),
-                                Nickname = GetStringFromRecord(record, 11),
-                                ImageFolder = GetStringFromRecord(record, 12),
-                                CardNumber = GetStringFromRecord(record, 13),
-                                //PlaceholderO_14 = GetStringFromRecord(record, 14),
-                                //PlaceholderP_15 = GetStringFromRecord(record, 15),
-                                //HaveNonFoilToSell = GetStringFromRecord(record, 16),
-                                //HaveNonFoilToTrade = GetStringFromRecord(record, 17),
-                                //HaveFoilToSell = GetStringFromRecord(record, 18),
-                                //HaveFoilToTrade = GetStringFromRecord(record, 19),
-                                //WantNonFoilToBuy = GetStringFromRecord(record, 20),
-                                //WantNonFoilForTrade = GetStringFromRecord(record, 21),
-                                //WantFoilToBuy = GetStringFromRecord(record, 22),
-                                //WantFoilForTrade = GetStringFromRecord(record, 23),
-                            };
-                            allCommunityCards.Add(card);
-                        }
-                        catch (Exception exc)
-                        {
-                            _logger.LogError($"Exception loading allCommunityCards: {exc.Message}");
+                                if (values.IndexOf(record) == 0) continue;
+                                CommunityCardInfo card = new CommunityCardInfo
+                                {
+                                    SetCode = set.SetCode,
+                                    TeamBuilderId = GetStringFromRecord(record, 0),
+                                    CardTitle = GetStringFromRecord(record, 1),
+                                    CardSubtitle = GetStringFromRecord(record, 2),
+                                    PurchaseCost = GetStringFromRecord(record, 3),
+                                    EnergyType = GetStringFromRecord(record, 4),
+                                    Rarity = GetStringFromRecord(record, 5),
+                                    Affiliation = GetStringFromRecord(record, 6),
+                                    AbilityText = GetStringFromRecord(record, 7),
+                                    StatLine = GetStringFromRecord(record, 8),
+                                    CardImageUrl = GetStringFromRecord(record, 9),
+                                    DiceImageUrl = GetStringFromRecord(record, 10),
+                                    Nickname = GetStringFromRecord(record, 11),
+                                    ImageFolder = GetStringFromRecord(record, 12),
+                                    CardNumber = GetStringFromRecord(record, 13),
+                                    //PlaceholderO_14 = GetStringFromRecord(record, 14),
+                                    //PlaceholderP_15 = GetStringFromRecord(record, 15),
+                                    //HaveNonFoilToSell = GetStringFromRecord(record, 16),
+                                    //HaveNonFoilToTrade = GetStringFromRecord(record, 17),
+                                    //HaveFoilToSell = GetStringFromRecord(record, 18),
+                                    //HaveFoilToTrade = GetStringFromRecord(record, 19),
+                                    //WantNonFoilToBuy = GetStringFromRecord(record, 20),
+                                    //WantNonFoilForTrade = GetStringFromRecord(record, 21),
+                                    //WantFoilToBuy = GetStringFromRecord(record, 22),
+                                    //WantFoilForTrade = GetStringFromRecord(record, 23),
+                                };
+
+                                if (card.Rarity == "Super") card.Rarity = "Super Rare"; // change here instead of everywhere in the sheet.
+
+                                if (!string.IsNullOrEmpty(card.TeamBuilderId))
+                                {
+                                    communityInfo.Cards.Add(card);
+                                }
+                                else
+                                {
+                                    blankRowExceptions++;
+                                }
+
+                            }
+                            catch (Exception exc)
+                            {
+                                _logger.LogError($"Exception loading allCommunityCards: {exc.Message}");
+                                blankRowExceptions++;
+                            }
+                            if (blankRowExceptions >= 5) break;
                         }
                     }
-                }
-                catch (Exception exc)
-                {
-                    Console.WriteLine(exc.Message);
-                }
+                    catch (Exception exc)
+                    {
+                        Console.WriteLine(exc.Message);
+                    }
                 });
             }
-            return allCommunityCards;
+            return communityInfo;
         }
 
-        internal async Task<TradeLists> LoadAllTrades()
+        internal async Task<TradeLists> LoadAllTrades(CommunityInfo communityInfo)
         {
             TradeLists tradeList = new TradeLists();
             tradeList.Haves = new List<TradeInfo>();
@@ -471,8 +486,17 @@ namespace DiceMastersDiscordBot.Services
             {
                 await Task.Run(() =>
                 {
-                    tradeList.Haves.AddRange(LoadTradeSheet(tradeSheet, TradingHaveSheetName));
-                    tradeList.Wants.AddRange(LoadTradeSheet(tradeSheet, TradingWantSheetName));
+                    var tradeHaves = LoadTradeSheet(tradeSheet, TradingHaveSheetName);
+                    tradeList.Haves.AddRange(tradeHaves);
+                    var tradeWants = LoadTradeSheet(tradeSheet, TradingWantSheetName);
+                    tradeList.Wants.AddRange(tradeWants);
+                    if(!tradeHaves.Any() && !tradeWants.Any())  // if nothing loaded, try the alternate format
+                    {
+                        tradeHaves = LoadAndyTradeSheet(tradeSheet, "I have these items for trade", communityInfo);
+                        tradeList.Haves.AddRange(tradeHaves);
+                        tradeWants = LoadAndyTradeSheet(tradeSheet, "I want these items", communityInfo);
+                        tradeList.Wants.AddRange(tradeWants);
+                    }
                 });
             }
             return tradeList;
@@ -587,6 +611,101 @@ namespace DiceMastersDiscordBot.Services
             }
             return tradeInfoCards;
         }
+
+        internal List<TradeInfo> LoadAndyTradeSheet(TradeSheet tradeSheet, string sheetName, CommunityInfo communityInfo)
+        {
+            List<TradeInfo> tradeInfoCards = new List<TradeInfo>();
+            try
+            {
+                // Define request parameters.
+                var range = $"{sheetName}!A:G";
+
+                // load the data
+                var sheetRequest = _sheetService.Spreadsheets.Values.Get(tradeSheet.SheetId, range);
+                var sheetResponse = sheetRequest.Execute();
+                var values = sheetResponse.Values;
+                int blankRowExceptions = 0;
+
+                var sheetDiscordUser = string.Empty;
+                var comparer = StringComparer.Create(CultureInfo.CurrentCulture, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
+              
+                foreach (var record in values)
+                {
+                    try
+                    {
+                        if (values.IndexOf(record) == 0)
+                        {
+                            // sheetDiscordUser = GetStringFromRecord(record, 1);
+                            sheetDiscordUser = "Andy612";
+                            continue;
+                        }
+                        if (values.IndexOf(record) <= 2) continue;  // skip lines until 4
+
+                        var set = GetStringFromRecord(record, 0);
+                        if (set == "OP") set = "PROMO";
+
+                        var rarity = GetStringFromRecord(record, 1);
+                        var characterName = GetStringFromRecord(record, 2);
+
+                        var findMatchingCharacters = communityInfo.Cards.Where(c => comparer.Equals(characterName, c.CardTitle));
+                        if( !findMatchingCharacters.Any())
+                        {
+                            // try without special characters, i.e., "Spider-man" vs "Spiderman"
+                            findMatchingCharacters = communityInfo.Cards.Where(c => comparer.Equals(Regex.Replace(characterName, @"[^\w\d]", ""), Regex.Replace(c.CardTitle, @"[^\w\d]", "")));
+                        }
+
+                        var setInfo = communityInfo.Sets.FirstOrDefault(s => s.SetName.ToLower().Contains(set.ToLower()));
+                        if (setInfo == null)
+                        {
+                            // try without special characters, i.e., "Avengers Vs X-Men" vs "Avengers Vs. X-Men"
+                            setInfo = communityInfo.Sets.FirstOrDefault(s => comparer.Equals(Regex.Replace(s.SetName, @"[^\w\d]", ""), Regex.Replace(set, @"[^\w\d]", "")));
+                        }
+
+                        var matchSetAndRarity = findMatchingCharacters.Where(f => f.SetCode == setInfo.SetCode && rarity.ToLower().Contains(f.Rarity.ToLower()));
+
+                        if (!matchSetAndRarity.Any())
+                        {
+                            _logger.LogInformation($"Couldn't find match for set = {set}, rarity = {rarity}, charcter = {characterName}");
+                            continue;
+                        }
+                        var isThisYourCard = matchSetAndRarity.FirstOrDefault();
+
+                        TradeInfo tradeCard = new TradeInfo
+                        {
+                            TeamBuilderId = isThisYourCard.TeamBuilderId,
+                            CardName = isThisYourCard.CardTitle,
+                            NonFoil = !rarity.ToLower().Contains("foil"),
+                            Foil = rarity.ToLower().Contains("foil"),
+                            SellOrBuy = true,
+                            Trade = true,
+                            DiscordUsername = sheetDiscordUser,
+                        };
+                        if (!string.IsNullOrEmpty(tradeCard.TeamBuilderId))
+                        {
+                            tradeInfoCards.Add(tradeCard);
+                        }
+                        else
+                        {
+                            blankRowExceptions++;
+                        }
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception loading trade sheet: {exc.Message}");
+                        blankRowExceptions++;
+                    }
+
+                    // if we've hit five rows of exceptions, we're probably past the valid data.
+                    if (blankRowExceptions >= 5) break;
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+            }
+            return tradeInfoCards;
+        }
+
 
         internal bool UpdateCommunityTradeCard(TradeInfo cardTradeInfo, bool isHave)
         {

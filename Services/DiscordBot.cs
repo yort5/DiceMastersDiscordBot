@@ -50,7 +50,7 @@ namespace DiceMastersDiscordBot.Services
 
 
         private List<EventManifest> _currentEventList = new List<EventManifest>();
-        private List<CommunityCardInfo> _allCommunityCardList = new List<CommunityCardInfo>();
+        private CommunityInfo _communityInfo = new CommunityInfo();
         private TradeLists _tradeLists = new TradeLists();
 
         private DiscordSocketClient _client;
@@ -114,7 +114,7 @@ namespace DiceMastersDiscordBot.Services
                     if (lastUpdatedTicks < currentDayTicks)
                     {
                         lastUpdatedTicks = currentDayTicks;
-                        await LoadCardInfo();
+                        await LoadCommunityInfo();
                         await LoadTradeLists();
                     }
 
@@ -259,7 +259,7 @@ namespace DiceMastersDiscordBot.Services
 
                 var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
 
-                var communityCardInfo = _allCommunityCardList.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
+                var communityCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
                 var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
 
                 if (!imageOnly || communityCardInfo != null)
@@ -364,7 +364,7 @@ namespace DiceMastersDiscordBot.Services
             var cardCode = command.Data.Options.First().Options.First().Value.ToString();
             var isFoil = command.Data.Options.Where(o => o.Name == "foil");
             var type = command.Data.Options.Where(o => o.Name == "type");
-            var fullCardInfo = _allCommunityCardList.FirstOrDefault(c => c.TeamBuilderId.ToLower() == cardCode.ToLower());
+            var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => c.TeamBuilderId.ToLower() == cardCode.ToLower());
 
             switch (haveOrWant)
             {
@@ -593,7 +593,6 @@ namespace DiceMastersDiscordBot.Services
                 await modal.RespondAsync($"Found these users that have a FOIL for TRADE: {cardInfo.WantFoilForTrade}");
             }
         }
-        */
 
         private async Task HandleCardWantModalResponseAsync(SocketModal modal)
         {
@@ -602,11 +601,12 @@ namespace DiceMastersDiscordBot.Services
             string cardFoil = modalComponents.First(x => x.CustomId == "card_foil").Value;
             string cardMethod = modalComponents.First(x => x.CustomId == "card_method").Value;
         }
+        */
         #endregion
 
         private async Task LoadTradeLists()
         {
-            _tradeLists = await _sheetService.LoadAllTrades();
+            _tradeLists = await _sheetService.LoadAllTrades(_communityInfo);
         }
 
         private async Task DiscordMessageReceived(SocketMessage message)
@@ -772,7 +772,7 @@ namespace DiceMastersDiscordBot.Services
 
                 var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
 
-                var communityCardInfo = _allCommunityCardList.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
+                var communityCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
                 var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
 
                 if (!imageOnly || communityCardInfo != null)
@@ -1426,12 +1426,9 @@ namespace DiceMastersDiscordBot.Services
             _currentEventList = _sheetService.LoadEventManifests();
         }
 
-        private async Task LoadCardInfo()
+        private async Task LoadCommunityInfo()
         {
-            if(!_allCommunityCardList.Any())
-            {
-                _allCommunityCardList = await _sheetService.LoadAllCommunityCards();
-            }
+            _communityInfo = await _sheetService.LoadCommunityInfo();
         }
 
         private List<CardInfo> ParseTeamList(EventUserInput team)
@@ -1479,7 +1476,7 @@ namespace DiceMastersDiscordBot.Services
             var digits = new string(diceIdString.Where(s => char.IsDigit(s)).ToArray());
             var letters = new string(diceIdString.Where(s => char.IsLetter(s)).ToArray());
             var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
-            var fullCardInfo = _allCommunityCardList.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
+            var fullCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
 
             return new CardInfo { TeamBuilderId = diceIdString, DiceCount = diceCount, FullCardInfo = fullCardInfo ?? new CommunityCardInfo { TeamBuilderId = teamBuilderId } };
         }
@@ -1491,8 +1488,7 @@ namespace DiceMastersDiscordBot.Services
 
             var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
             
-            return _allCommunityCardList.Single(c => c.TeamBuilderId.ToUpper() == teamBuilderId.ToUpper()
-            );
+            return _communityInfo.Cards.Single(c => c.TeamBuilderId.ToUpper() == teamBuilderId.ToUpper());
         }
 
         private Task Log(LogMessage msg)
