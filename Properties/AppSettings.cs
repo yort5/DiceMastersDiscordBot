@@ -14,6 +14,7 @@ namespace DiceMastersDiscordBot.Properties
         private readonly IConfiguration _config;
 
         private readonly string _DiscordToken;
+        private readonly string _TCCDiscordToken;
         private readonly string _GoogleToken;
         private readonly string _ChallongeToken;
         private readonly string _MasterSheetId;
@@ -26,6 +27,7 @@ namespace DiceMastersDiscordBot.Properties
             _config = config ?? throw new ArgumentNullException(nameof(config));
 
             _DiscordToken = _config["DiscordToken"];
+            _TCCDiscordToken = _config["CCDiscordToken"];
             _GoogleToken = _config["GoogleCredentials"];
             _ChallongeToken = _config["ChallongeToken"];
 
@@ -38,6 +40,12 @@ namespace DiceMastersDiscordBot.Properties
         {
             return _DiscordToken;
         }
+
+        public string GetTCCDiscordToken()
+        {
+            return _TCCDiscordToken;
+        }
+
         public string GetGoogleToken()
         {
             return _GoogleToken;
@@ -133,6 +141,16 @@ namespace DiceMastersDiscordBot.Properties
         {
             var serverList = _config[$"SlashCommandFlag:{slashCommandName}"];
             return ParseIdsFromString(serverList);
+        }
+
+        public ulong GetCierraNotificationId()
+        {
+            ulong.TryParse(_config["CierraNotificationId"], out ulong cierraId);
+            return cierraId;
+        }
+        public List<ulong> GetRelientKNotificationIds()
+        {
+            return ParseIdsFromString(_config["RelientKNotificationIds"]);
         }
 
         public List<ulong> ParseIdsFromString(string input)

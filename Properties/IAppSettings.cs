@@ -8,6 +8,7 @@ namespace DiceMastersDiscordBot.Properties
         public const string SubmitString = "!submit";
 
         public string GetDiscordToken();
+        public string GetTCCDiscordToken();
         public string GetGoogleToken();
         public string GetChallongeToken();
 
@@ -19,6 +20,8 @@ namespace DiceMastersDiscordBot.Properties
         public List<ulong> GetDiceMastersMediaChannelIds();
         public List<ulong> GetNonDiceMastersMediaChannelIds();
         public List<ulong> GetServersForSlashCommand(string slashCommandName);
+        public ulong GetCierraNotificationId();
+        public List<ulong> GetRelientKNotificationIds();
 
         public string GetColumnSpan();
         public string GetBotName();

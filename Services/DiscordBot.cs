@@ -98,7 +98,7 @@ namespace DiceMastersDiscordBot.Services
                 await _client.StartAsync();
 
                 // give the service a chance to start before moving on to computational things
-                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
 
                 var lastUpdatedTicks = DateTime.MinValue.ToUniversalTime().Ticks;
                 while (!stoppingToken.IsCancellationRequested)

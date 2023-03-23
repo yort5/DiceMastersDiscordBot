@@ -32,6 +32,7 @@ namespace DiceMastersDiscordBot
                 {
                     services.AddSingleton<IAppSettings, AppSettings>();
                     services.AddSingleton<DMSheetService>();
+                    services.AddSingleton<TCCSheetService>();
                     services.AddSingleton<DiceMastersEventFactory>();
                     services.AddSingleton<YouTubeMonitorService>();
                     services.AddHttpClient();
@@ -52,8 +53,7 @@ namespace DiceMastersDiscordBot
                         c.BaseAddress = new Uri("https://api.challonge.com");
                     });
                     services.AddHostedService<DiscordBot>();
-                    //services.AddHostedService<RallyMonitorService>();
-                    //services.AddHostedService<TwitchBot>();
+                    services.AddHostedService<TCCDiscordBot>();
                 })
                 // Only required if the service responds to requests.
                 .ConfigureWebHostDefaults(webBuilder =>
