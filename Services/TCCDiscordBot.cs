@@ -16,6 +16,9 @@ using System.Text.Json;
 using DiceMastersDiscordBot.Properties;
 using Discord.Net;
 using DiceMastersDiscordBot.Entities;
+using System.Net;
+using System.Web;
+using Newtonsoft.Json;
 
 namespace DiceMastersDiscordBot.Services
 {
@@ -24,6 +27,7 @@ namespace DiceMastersDiscordBot.Services
         private readonly ILogger<TCCDiscordBot> _logger;
         private readonly IAppSettings _settings;
         private readonly IHostEnvironment _environment;
+        private readonly HttpClient _tccValueHttpClient;
         private Random _random;
         private DateTime _relientKLastMentioned = DateTime.MinValue;
 
@@ -41,9 +45,12 @@ namespace DiceMastersDiscordBot.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _settings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _tccValueHttpClient = httpClientFactory.CreateClient("TCC");
             _sheetService = gSheetService;
 
             _random = new Random();
+            _tccValueHttpClient.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", _settings.GetTCCValueTrackerApiKey());
+            _tccValueHttpClient.DefaultRequestHeaders.Add("Accepts", "application/json");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -54,7 +61,7 @@ namespace DiceMastersDiscordBot.Services
 
             try
             {
-                var discordConfig = new DiscordSocketConfig { GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.GuildMembers | GatewayIntents.GuildPresences };
+                var discordConfig = new DiscordSocketConfig { GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.GuildMembers | GatewayIntents.GuildPresences | GatewayIntents.Guilds };
                 _client = new DiscordSocketClient(discordConfig);
 
                 _client.Log += Log;
@@ -78,14 +85,32 @@ namespace DiceMastersDiscordBot.Services
                 {
                     _logger.LogInformation("DiscordBot is doing background work.");
 
+                    // Doing the delay first, as the Guild data isn't populated yet if we do it right away.
+                    await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+                    try
+                    {
+                        var tccCurrent = await TCCGetCrime();
+                        var crimePrice = tccCurrent.data.SRLY.First().quote.USD.price * 3.244;
+                        foreach (var guild in _client.Guilds)
+                        {
+                            var user = guild.GetUser(_client.CurrentUser.Id);
+                            await user.ModifyAsync(userProps =>
+                            {
+                                userProps.Nickname = $"CRIME PRICE: {crimePrice:C2}";
+                            });
+                        }
+                    }
+                    catch (Exception exc)
+                    {
+                        _logger.LogError($"Exception trying to update nickname: {exc.Message}");
+                    }
+
                     // only do these once a day
                     var currentDayTicks = DateTime.Today.ToUniversalTime().Ticks;
                     if (lastUpdatedTicks < currentDayTicks)
                     {
                         lastUpdatedTicks = currentDayTicks;
                     }
-
-                    await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
                 }
             }
             catch (Exception exc)
@@ -98,6 +123,11 @@ namespace DiceMastersDiscordBot.Services
 
         private async Task Client_Ready()
         {
+            var priceCommand = new SlashCommandBuilder()
+                .WithName("price")
+                .WithDescription("Prints the current price of $CRIME on Solana.");
+            await RegisterCommand(priceCommand);
+
             var referralCommand = new SlashCommandBuilder()
                 .WithName("referral")
                 .WithDescription("Refer an company, service, app, etc with a code or link for mutual benefit.")
@@ -117,7 +147,7 @@ namespace DiceMastersDiscordBot.Services
                 .WithDescription("Add your referral for a particular company.")
                 .WithType(ApplicationCommandOptionType.SubCommand)
                 );
-            await RegisterCommand(referralCommand, true);
+            await RegisterCommand(referralCommand);
 
         }
 
@@ -147,27 +177,48 @@ namespace DiceMastersDiscordBot.Services
         {
             switch (command.Data.Name)
             {
+                case "price":
+                    await HandlePriceCommand(command);
+                    break;
                 case "referral":
                     await HandleReferralCommand(command);
                     break;
             }
         }
 
+        private async Task HandlePriceCommand(SocketSlashCommand command)
+        {
+            var tccCurrent = await TCCGetCrime();
+            var crimePrice = tccCurrent.data.SRLY.First().quote.USD.price * 3.244;
+            await command.RespondAsync($"$CRIME is currently {crimePrice:C2} (on Solana via sRLY)");
+
+            foreach (var guild in _client.Guilds)
+            {
+                var user = guild.GetUser(_client.CurrentUser.Id);
+                await user.ModifyAsync(userProps =>
+                {
+                    userProps.Nickname = $"CRIME PRICE: {crimePrice:C2}";
+                });
+            }
+        }
+
         private async Task HandleReferralCommand(SocketSlashCommand command)
         {
-            var haveOrWant = command.Data.Options.First().Name;
-            var cardCode = command.Data.Options.First().Options.First().Value.ToString();
-            var isFoil = command.Data.Options.Where(o => o.Name == "foil");
-            var type = command.Data.Options.Where(o => o.Name == "type");
+            var subCommand = command.Data.Options.First().Name;
 
-            switch (haveOrWant)
+            switch (subCommand)
             {
-                case "have":
+                case "list":
                     {
 
                     }
                     break;
-                case "want":
+                case "get":
+                    {
+
+                    }
+                    break;
+                case "add":
                     {
 
                     }
@@ -330,6 +381,16 @@ namespace DiceMastersDiscordBot.Services
                 _relientKLastMentioned = DateTime.UtcNow;
             }
             return notifyRelientK;
+        }
+
+        public async Task<TCCValueResult> TCCGetCrime()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"?symbol=BTC,SRLY");
+
+            HttpResponseMessage response = await _tccValueHttpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            return JsonConvert.DeserializeObject<TCCValueResult>(await response.Content.ReadAsStringAsync());
         }
 
         private Task Log(LogMessage msg)

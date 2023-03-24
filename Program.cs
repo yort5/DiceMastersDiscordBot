@@ -52,6 +52,10 @@ namespace DiceMastersDiscordBot
                     {
                         c.BaseAddress = new Uri("https://api.challonge.com");
                     });
+                    services.AddHttpClient("TCC", c =>
+                    {
+                        c.BaseAddress = new Uri("https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest");
+                    });
                     services.AddHostedService<DiscordBot>();
                     services.AddHostedService<TCCDiscordBot>();
                 })

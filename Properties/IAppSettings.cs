@@ -11,8 +11,10 @@ namespace DiceMastersDiscordBot.Properties
         public string GetTCCDiscordToken();
         public string GetGoogleToken();
         public string GetChallongeToken();
+        public string GetTCCValueTrackerApiKey();
 
-       
+
+
         public string GetMasterSheetId();
         public string GetCommunitySheetId();
         public string GetCrimeSheetId();

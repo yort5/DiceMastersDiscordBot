@@ -108,6 +108,11 @@ namespace DiceMastersDiscordBot.Properties
             return _CommunitySheetId;
         }
 
+        public string GetTCCValueTrackerApiKey()
+        {
+            return _config["TCCValueTrackerApi"];
+        }
+
         public string GetCrimeSheetId()
         {
             return _CrimeSheetId;

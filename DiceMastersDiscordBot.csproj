@@ -27,4 +27,14 @@
   <ItemGroup>
     <Compile Remove="Entities\Refs.cs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Images\hellyeah.jpg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Images\hellyeah.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
