@@ -17,6 +17,7 @@ using DiceMastersDiscordBot.Properties;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Collections;
 
 namespace DiceMastersDiscordBot.Services
 {
@@ -420,7 +421,7 @@ namespace DiceMastersDiscordBot.Services
                                 CommunityCardInfo card = new CommunityCardInfo
                                 {
                                     SetCode = set.SetCode,
-                                    TeamBuilderId = GetStringFromRecord(record, 0),
+                                    TeamBuilderCode = GetStringFromRecord(record, 0),
                                     CardTitle = GetStringFromRecord(record, 1),
                                     CardSubtitle = GetStringFromRecord(record, 2),
                                     PurchaseCost = GetStringFromRecord(record, 3),
@@ -448,7 +449,7 @@ namespace DiceMastersDiscordBot.Services
 
                                 if (card.Rarity == "Super") card.Rarity = "Super Rare"; // change here instead of everywhere in the sheet.
 
-                                if (!string.IsNullOrEmpty(card.TeamBuilderId))
+                                if (!string.IsNullOrEmpty(card.TeamBuilderCode))
                                 {
                                     communityInfo.Cards.Add(card);
                                 }
@@ -486,9 +487,9 @@ namespace DiceMastersDiscordBot.Services
             {
                 await Task.Run(() =>
                 {
-                    var tradeHaves = LoadTradeSheet(tradeSheet, TradingHaveSheetName);
+                    var tradeHaves = LoadTradeSheet(tradeSheet, TradingHaveSheetName, communityInfo);
                     tradeList.Haves.AddRange(tradeHaves);
-                    var tradeWants = LoadTradeSheet(tradeSheet, TradingWantSheetName);
+                    var tradeWants = LoadTradeSheet(tradeSheet, TradingWantSheetName, communityInfo);
                     tradeList.Wants.AddRange(tradeWants);
                     if(!tradeHaves.Any() && !tradeWants.Any())  // if nothing loaded, try the alternate format
                     {
@@ -498,6 +499,7 @@ namespace DiceMastersDiscordBot.Services
                         tradeList.Wants.AddRange(tradeWants);
                     }
                 });
+                // await Task.Delay(TimeSpan.FromMinutes(10));  // take a little break between sheets so we don't overwhelm our Google API limits
             }
             return tradeList;
         }
@@ -551,19 +553,20 @@ namespace DiceMastersDiscordBot.Services
 
         }
 
-        internal List<TradeInfo> LoadTradeSheet(TradeSheet tradeSheet, string sheetName)
+        internal List<TradeInfo> LoadTradeSheet(TradeSheet tradeSheet, string sheetName, CommunityInfo communityInfo)
         {
             List<TradeInfo> tradeInfoCards = new List<TradeInfo>();
             try
             {
                 // Define request parameters.
-                var range = $"{sheetName}!A:G";
+                var range = $"{sheetName}!A:J";
 
                 // load the data
                 var sheetRequest = _sheetService.Spreadsheets.Values.Get(tradeSheet.SheetId, range);
                 var sheetResponse = sheetRequest.Execute();
                 var values = sheetResponse.Values;
                 int blankRowExceptions = 0;
+                var comparer = StringComparer.Create(CultureInfo.CurrentCulture, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
 
                 var sheetDiscordUser = string.Empty;
                 foreach (var record in values)
@@ -576,18 +579,25 @@ namespace DiceMastersDiscordBot.Services
                             continue;
                         }
                         if (values.IndexOf(record) <= 3) continue;  // skip lines 2-4
-                        TradeInfo tradeCard = new TradeInfo
+
+                        var teamBuilderCode = GetStringFromRecord(record, 0);
+                        var set = GetStringFromRecord(record, 1);
+                        var characterName = GetStringFromRecord(record, 2);
+                        var rarity = GetStringFromRecord(record, 3);
+
+                        var isThisYourCard = GetCardFromTraits(communityInfo, teamBuilderCode, set, characterName, rarity, comparer, _logger);
+                        if (!string.IsNullOrEmpty(isThisYourCard.TeamBuilderCode))
                         {
-                            TeamBuilderId = GetStringFromRecord(record, 0),
-                            CardName = GetStringFromRecord(record, 1),
-                            NonFoil = GetBooleanFromRecord(record, 2),
-                            Foil = GetBooleanFromRecord(record, 3),
-                            SellOrBuy = GetBooleanFromRecord(record, 4),
-                            Trade = GetBooleanFromRecord(record, 5),
-                            DiscordUsername = !string.IsNullOrEmpty(sheetDiscordUser) ? sheetDiscordUser : GetStringFromRecord(record, 6),
-                        };
-                        if(!string.IsNullOrEmpty(tradeCard.TeamBuilderId))
-                        {
+                            TradeInfo tradeCard = new TradeInfo
+                            {
+                                CardInfo = isThisYourCard,
+                                NonFoil = GetBooleanFromRecord(record, 4),
+                                Foil = GetBooleanFromRecord(record, 5),
+                                SellOrBuy = GetBooleanFromRecord(record, 6),
+                                Trade = GetBooleanFromRecord(record, 7),
+                                DiscordUsername = !string.IsNullOrEmpty(sheetDiscordUser) ? sheetDiscordUser : GetStringFromRecord(record, 9),
+                                Promo = GetStringFromRecord(record, 8),
+                            };
                             tradeInfoCards.Add(tradeCard);
                         }
                         else
@@ -642,46 +652,34 @@ namespace DiceMastersDiscordBot.Services
                         if (values.IndexOf(record) <= 2) continue;  // skip lines until 4
 
                         var set = GetStringFromRecord(record, 0);
-                        if (set == "OP") set = "PROMO";
-
                         var rarity = GetStringFromRecord(record, 1);
                         var characterName = GetStringFromRecord(record, 2);
+                        bool isFoil = false;
 
-                        var findMatchingCharacters = communityInfo.Cards.Where(c => comparer.Equals(characterName, c.CardTitle));
-                        if( !findMatchingCharacters.Any())
+                        if(rarity.ToLower().Contains("(foil)"))
                         {
-                            // try without special characters, i.e., "Spider-man" vs "Spiderman"
-                            findMatchingCharacters = communityInfo.Cards.Where(c => comparer.Equals(Regex.Replace(characterName, @"[^\w\d]", ""), Regex.Replace(c.CardTitle, @"[^\w\d]", "")));
+                            isFoil = true;
+                            rarity = rarity.Replace("(foil)", "").Trim();
                         }
 
-                        var setInfo = communityInfo.Sets.FirstOrDefault(s => s.SetName.ToLower().Contains(set.ToLower()));
-                        if (setInfo == null)
+                        if (rarity.ToLower() == "bac")
                         {
-                            // try without special characters, i.e., "Avengers Vs X-Men" vs "Avengers Vs. X-Men"
-                            setInfo = communityInfo.Sets.FirstOrDefault(s => comparer.Equals(Regex.Replace(s.SetName, @"[^\w\d]", ""), Regex.Replace(set, @"[^\w\d]", "")));
+                            rarity = "Common";
                         }
 
-                        var matchSetAndRarity = findMatchingCharacters.Where(f => f.SetCode == setInfo.SetCode && rarity.ToLower().Contains(f.Rarity.ToLower()));
 
-                        if (!matchSetAndRarity.Any())
+                        var isThisYourCard = GetCardFromTraits(communityInfo, string.Empty, set, characterName, rarity, comparer, _logger);
+                        if (!string.IsNullOrEmpty(isThisYourCard.TeamBuilderCode))
                         {
-                            _logger.LogInformation($"Couldn't find match for set = {set}, rarity = {rarity}, charcter = {characterName}");
-                            continue;
-                        }
-                        var isThisYourCard = matchSetAndRarity.FirstOrDefault();
-
-                        TradeInfo tradeCard = new TradeInfo
-                        {
-                            TeamBuilderId = isThisYourCard.TeamBuilderId,
-                            CardName = isThisYourCard.CardTitle,
-                            NonFoil = !rarity.ToLower().Contains("foil"),
-                            Foil = rarity.ToLower().Contains("foil"),
-                            SellOrBuy = true,
-                            Trade = true,
-                            DiscordUsername = sheetDiscordUser,
-                        };
-                        if (!string.IsNullOrEmpty(tradeCard.TeamBuilderId))
-                        {
+                            TradeInfo tradeCard = new TradeInfo
+                            {
+                                CardInfo = isThisYourCard,
+                                NonFoil = !isFoil,
+                                Foil = isFoil,
+                                SellOrBuy = true,
+                                Trade = true,
+                                DiscordUsername = sheetDiscordUser,
+                            };
                             tradeInfoCards.Add(tradeCard);
                         }
                         else
@@ -696,7 +694,7 @@ namespace DiceMastersDiscordBot.Services
                     }
 
                     // if we've hit five rows of exceptions, we're probably past the valid data.
-                    if (blankRowExceptions >= 5) break;
+                    if (blankRowExceptions >= 100) break;
                 }
             }
             catch (Exception exc)
@@ -721,7 +719,7 @@ namespace DiceMastersDiscordBot.Services
                 bool existingEntryFound = false;
                 foreach (var record in existingCardRecords.Values)
                 {
-                    if (record[0].ToString().Equals(cardTradeInfo.TeamBuilderId, StringComparison.CurrentCultureIgnoreCase))
+                    if (record[0].ToString().Equals(cardTradeInfo.CardInfo.TeamBuilderCode, StringComparison.CurrentCultureIgnoreCase))
                     {
                         var index = existingCardRecords.Values.IndexOf(record);
                         range = $"{sheetName}!A{index + 1}:G{index + 1}";
@@ -732,12 +730,16 @@ namespace DiceMastersDiscordBot.Services
 
                 var oblist = new List<object>()
                 {
-                    cardTradeInfo.TeamBuilderId,
-                    cardTradeInfo.CardName,
+                    cardTradeInfo.CardInfo.TeamBuilderCode,
+                    cardTradeInfo.CardInfo.SetCode,
+                    cardTradeInfo.CardInfo.CardTitle,
+                    cardTradeInfo.CardInfo.Rarity,
                     cardTradeInfo.NonFoil,
                     cardTradeInfo.Foil,
                     cardTradeInfo.SellOrBuy,
                     cardTradeInfo.Trade,
+                    cardTradeInfo.Promo,
+                    cardTradeInfo.DiscordUsername
                 };
                 var valueRange = new ValueRange();
                 valueRange.Values = new List<IList<object>> { oblist };
@@ -1220,6 +1222,57 @@ namespace DiceMastersDiscordBot.Services
             var stringValue = (record.Count >= (index + 1) && record[index] != null) ? record[index].ToString() : string.Empty;
             Boolean.TryParse(stringValue, out bool isTrue);
             return isTrue;
+        }
+
+        private static CommunityCardInfo GetCardFromTraits(CommunityInfo communityInfo, string teamBuilderCode, string setCode, string cardName, string rarity, StringComparer comparer, ILogger logger)
+        {
+            var formattedTeamBuilderCode = CommunityCardInfo.GetFormattedTeamBuilderCode(teamBuilderCode);
+            var teamBuilderMatch = communityInfo.Cards.Where(c => comparer.Equals(formattedTeamBuilderCode, c.TeamBuilderCode));
+            if(teamBuilderMatch.Any())
+            {
+                return teamBuilderMatch.FirstOrDefault();
+            }
+
+            if (setCode == "OP") setCode = "PROMO";
+
+            var findMatchingCharacters = communityInfo.Cards.Where(c => comparer.Equals(cardName, c.CardTitle));
+
+            // if we didn't find a straight-up match, try without special characters. i.e., "Spider-man" vs "Spiderman"
+            if (!findMatchingCharacters.Any())
+            {
+                findMatchingCharacters = communityInfo.Cards.Where(c => comparer.Equals(Regex.Replace(cardName, @"[^\w\d]", ""), Regex.Replace(c.CardTitle, @"[^\w\d]", "")));
+            }
+
+            // if we STILL haven't found a match, try a "contains". This can produce false positives, but will catch when extra text has been
+            // added, like "Magneto (no die)".
+            if (!findMatchingCharacters.Any())
+            {
+                findMatchingCharacters = communityInfo.Cards.Where(c => cardName.ToLower().Contains(c.CardTitle.ToLower()));
+            }
+
+            // first try to match on set code
+            var setInfo = communityInfo.Sets.FirstOrDefault(s => s.SetCode.ToLower().Contains(setCode.ToLower()));
+            // If that doesn't match, try to match on the full name
+            if (setInfo == null)
+            {
+                setInfo = communityInfo.Sets.FirstOrDefault(s => s.SetName.ToLower().Contains(setCode.ToLower()));
+            }
+            // If THAT doesn't work, try without special characters, i.e., "Avengers Vs X-Men" vs "Avengers Vs. X-Men"
+            if (setInfo == null)
+            {
+                setInfo = communityInfo.Sets.FirstOrDefault(s => comparer.Equals(Regex.Replace(s.SetName, @"[^\w\d]", ""), Regex.Replace(setCode, @"[^\w\d]", "")));
+            }
+
+            var matchSetAndRarity = findMatchingCharacters.Where(f => f.SetCode == setInfo.SetCode 
+                                                                && (comparer.Equals(rarity, f.Rarity) || comparer.Equals(rarity, f.RarityAbbreviation)) );
+
+            if (!matchSetAndRarity.Any())
+            {
+                logger.LogInformation($"Couldn't find match for set = {setCode}, rarity = {rarity}, charcter = {cardName}");
+                return new CommunityCardInfo();
+            }
+            var isThisYourCard = matchSetAndRarity.FirstOrDefault();
+            return isThisYourCard;
         }
         #endregion
     }

@@ -253,6 +253,14 @@ namespace DiceMastersDiscordBot.Services
                     await message.Channel.SendFileAsync(hellyeahpath);
                 }
 
+                if (IsRightNow(message))
+                {
+                    if(_random.Next(2) == 0)
+                    {
+                        await message.Channel.SendMessageAsync("STAY UP STAY UP");
+                    }
+                }
+
                 if (TagCierra(message))
                 {
                     var cee = await message.Channel.GetUserAsync(_settings.GetCierraNotificationId());
@@ -346,6 +354,17 @@ namespace DiceMastersDiscordBot.Services
             }
 
             if (message.Content.ToLower().Contains("peephole", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsRightNow(SocketMessage message)
+        {
+            // probably should change this to a string list compare
+            if (message.Content.ToLower().Contains("right now", StringComparison.CurrentCultureIgnoreCase))
             {
                 return true;
             }

@@ -195,8 +195,13 @@ namespace DiceMastersDiscordBot.Services
                         .AddChoice("Sell", 2)
                         .AddChoice("Either", 3)
                         .WithType(ApplicationCommandOptionType.Integer))
+                )
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("check")
+                    .WithDescription("Check your list against the other lists for matches.")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
                 );
-            await RegisterCommand(tradeCommand);
+            await RegisterCommand(tradeCommand, true);
 
         }
 
@@ -259,7 +264,7 @@ namespace DiceMastersDiscordBot.Services
 
                 var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
 
-                var communityCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
+                var communityCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderCode.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
                 var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
 
                 if (!imageOnly || communityCardInfo != null)
@@ -276,7 +281,7 @@ namespace DiceMastersDiscordBot.Services
                         .AddField("Affiliations", communityCardInfo.Affiliation)
                         .AddField("Rarity", communityCardInfo.Rarity, true)
                         //.AddField("Die stats", communityCardInfo.StatLine)
-                        .WithFooter(footer => footer.Text = communityCardInfo.TeamBuilderId);
+                        .WithFooter(footer => footer.Text = communityCardInfo.TeamBuilderCode);
 
                     await command.RespondAsync(embed: cardEmbed.Build());
                 }
@@ -361,21 +366,40 @@ namespace DiceMastersDiscordBot.Services
         private async Task HandleTradeCommandAsync(SocketSlashCommand command)
         {
             var haveOrWant = command.Data.Options.First().Name;
-            var cardCode = command.Data.Options.First().Options.First().Value.ToString();
-            var isFoil = command.Data.Options.Where(o => o.Name == "foil");
-            var type = command.Data.Options.Where(o => o.Name == "type");
-            var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => c.TeamBuilderId.ToLower() == cardCode.ToLower());
 
             switch (haveOrWant)
             {
                 case "have":
                     {
-                        var possibleMatches = _tradeLists.Wants.Where(c => c.TeamBuilderId.ToLower() == cardCode.ToLower());
+                        var cardCode = command.Data.Options.First().Options.First().Value.ToString();
+                        var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => c.TeamBuilderCode.ToLower() == cardCode.ToLower());
+
+                        var possibleMatches = _tradeLists.Wants.Where(t => t.CardInfo.TeamBuilderCode.ToLower() == cardCode.ToLower());
                         if (possibleMatches.Any())
                         {
-                            StringBuilder possibleUserMatches = new StringBuilder();
-                            var users = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
-                            await command.RespondAsync($"We found the following users may be possible matches: {Environment.NewLine}{users}");
+                            try
+                            {
+                                StringBuilder possibleUserMatches = new StringBuilder();
+                                var usersString = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
+                                StringBuilder responseString = new StringBuilder();
+                                responseString.AppendLine($"{command.User.Username} has a {fullCardInfo.TeamBuilderCode} - {fullCardInfo.Rarity} {fullCardInfo.CardTitle}");
+                                responseString.AppendLine("We found the following users may be possible matches:");
+                                foreach (var user in possibleMatches)
+                                {
+                                    string foil;
+                                    if (user.Foil && user.NonFoil) foil = "both foil and non-foil";
+                                    else foil = user.Foil ? "foil" : "non-foil";
+                                    string trade;
+                                    if (user.Trade && user.SellOrBuy) trade = "either trade or buy.";
+                                    else trade = user.Trade ? "trade" : "buy";
+                                    responseString.AppendLine($"{user.DiscordUsername} is looking for a {foil} they would like to {trade}");
+                                }
+                                await command.RespondAsync(responseString.ToString());
+                            }
+                            catch (Exception exc)
+                            {
+                                _logger.LogError(exc.Message);
+                            }
                         }
                         else
                         {
@@ -385,7 +409,10 @@ namespace DiceMastersDiscordBot.Services
                     break;
                 case "want":
                     {
-                        var possibleMatches = _tradeLists.Haves.Where(c => c.TeamBuilderId.ToLower() == cardCode.ToLower());
+                        var cardCode = command.Data.Options.First().Options.First().Value.ToString();
+                        var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => c.TeamBuilderCode.ToLower() == cardCode.ToLower());
+
+                        var possibleMatches = _tradeLists.Haves.Where(t => t.CardInfo.TeamBuilderCode == cardCode.ToLower());
                         if (possibleMatches.Any())
                         {
                             try
@@ -393,7 +420,7 @@ namespace DiceMastersDiscordBot.Services
                                 StringBuilder possibleUserMatches = new StringBuilder();
                                 var usersString = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
                                 StringBuilder responseString = new StringBuilder();
-                                responseString.AppendLine($"{command.User.Username} is looking for {fullCardInfo.TeamBuilderId} - {fullCardInfo.Rarity} {fullCardInfo.CardTitle}");
+                                responseString.AppendLine($"{command.User.Username} is looking for {fullCardInfo.TeamBuilderCode} - {fullCardInfo.Rarity} {fullCardInfo.CardTitle}");
                                 responseString.AppendLine("We found the following users may be possible matches:");
                                 foreach (var user in possibleMatches)
                                 {
@@ -416,6 +443,53 @@ namespace DiceMastersDiscordBot.Services
                         {
                             await command.RespondAsync("Sorry, no matches found");
                         }
+                    }
+                    break;
+                case "check":
+                    {
+                        var usersWants = _tradeLists.Wants.Where(w => w.DiscordUsername == command.User.Username).ToList();
+                        var usersHaves = _tradeLists.Haves.Where(w => w.DiscordUsername == command.User.Username).ToList();
+                        StringBuilder matchReportString = new StringBuilder();
+                        matchReportString.AppendLine($"Trade Report for {command.User.Username}");
+
+                        foreach(var mywant in usersWants)
+                        {
+                            var matches = _tradeLists.Haves.Where(h => h.CardInfo.TeamBuilderCode == mywant.CardInfo.TeamBuilderCode 
+                                                                && h.DiscordUsername != mywant.DiscordUsername
+                                                                ).ToList();
+                            if(matches.Any())
+                            {
+                                matchReportString.AppendLine($"Possible matches found for {mywant.CardInfo.TeamBuilderCode}: {mywant.CardInfo.RarityAbbreviation} {mywant.CardInfo.CardTitle}");
+                                foreach(var match in matches)
+                                {
+                                    // if the user is looking for only foil but the match isn't foil, skip it. Other way around is fine (i.e., not looking for foil can return foil).
+                                    if (mywant.Foil && !mywant.NonFoil && !match.Foil) continue;
+
+                                    var matchResponse = GetTradeMatchResponse(match, "sell");
+                                    matchReportString.AppendLine(matchResponse);
+                                }
+                            }
+                        }
+
+                        foreach (var myhave in usersHaves)
+                        {
+                            var matches = _tradeLists.Wants.Where(h => h.CardInfo.TeamBuilderCode == myhave.CardInfo.TeamBuilderCode
+                                                                && h.DiscordUsername != myhave.DiscordUsername
+                                                                ).ToList();
+                            if (matches.Any())
+                            {
+                                matchReportString.AppendLine($"Possible matches found for {myhave.CardInfo.TeamBuilderCode}: {myhave.CardInfo.RarityAbbreviation} {myhave.CardInfo.CardTitle}");
+                                foreach (var match in matches)
+                                {
+                                    // if the match is looking for foil but the user isn't foil, skip it. Other way around is fine (i.e., not looking for foil can return foil).
+                                    if (match.Foil && !myhave.Foil) continue;
+
+                                    var matchResponse = GetTradeMatchResponse(match, "buy");
+                                    matchReportString.AppendLine(matchResponse);
+                                }
+                            }
+                        }
+                        await command.RespondAsync(matchReportString.ToString());
                     }
                     break;
             }
@@ -772,7 +846,7 @@ namespace DiceMastersDiscordBot.Services
 
                 var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
 
-                var communityCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
+                var communityCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderCode.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
                 var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
 
                 if (!imageOnly || communityCardInfo != null)
@@ -792,7 +866,7 @@ namespace DiceMastersDiscordBot.Services
                         .AddField("Affiliations", communityCardInfo.Affiliation)
                         .AddField("Rarity", communityCardInfo.Rarity, true)
                         //.AddField("Die stats", communityCardInfo.StatLine)
-                        .WithFooter(footer => footer.Text = communityCardInfo.TeamBuilderId);
+                        .WithFooter(footer => footer.Text = communityCardInfo.TeamBuilderCode);
 
                     await message.Channel.SendMessageAsync(embed: cardEmbed.Build());
 
@@ -1476,19 +1550,28 @@ namespace DiceMastersDiscordBot.Services
             var digits = new string(diceIdString.Where(s => char.IsDigit(s)).ToArray());
             var letters = new string(diceIdString.Where(s => char.IsLetter(s)).ToArray());
             var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
-            var fullCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderId.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
+            var fullCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderCode.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
 
-            return new CardInfo { TeamBuilderId = diceIdString, DiceCount = diceCount, FullCardInfo = fullCardInfo ?? new CommunityCardInfo { TeamBuilderId = teamBuilderId } };
+            return new CardInfo { TeamBuilderId = diceIdString, DiceCount = diceCount, FullCardInfo = fullCardInfo ?? new CommunityCardInfo { TeamBuilderCode = teamBuilderId } };
         }
 
         private CommunityCardInfo GetCommunityCardInfoFromCodeString(string codeString)
         {
-            var digits = new string(codeString.Where(s => char.IsDigit(s)).ToArray());
-            var letters = new string(codeString.Where(s => char.IsLetter(s)).ToArray());
-
-            var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
+            var teamBuilderCode = CommunityCardInfo.GetFormattedTeamBuilderCode(codeString);
             
-            return _communityInfo.Cards.Single(c => c.TeamBuilderId.ToUpper() == teamBuilderId.ToUpper());
+            return _communityInfo.Cards.Single(c => c.TeamBuilderCode.ToLower() == teamBuilderCode.ToLower());
+        }
+
+        private static string GetTradeMatchResponse(TradeInfo match, string buyorsell)
+        {
+            string foil;
+            if (match.Foil && match.NonFoil) foil = "both foil and non-foil";
+            else foil = match.Foil ? "foil" : "non-foil";
+            string trade;
+            if (match.Trade && match.SellOrBuy) trade = $"either trade or {buyorsell}.";
+            else trade = match.Trade ? "trade" : "sell";
+            var response = $"{match.DiscordUsername} has a {foil} they are willing to {trade}";
+            return response;
         }
 
         private Task Log(LogMessage msg)
