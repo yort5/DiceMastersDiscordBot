@@ -451,26 +451,34 @@ namespace DiceMastersDiscordBot.Services
                         var usersHaves = _tradeLists.Haves.Where(w => w.DiscordUsername == command.User.Username).ToList();
                         StringBuilder matchReportString = new StringBuilder();
                         matchReportString.AppendLine($"Trade Report for {command.User.Username}");
+                        matchReportString.AppendLine("*** WANTS ***");
 
-                        foreach(var mywant in usersWants)
+                        foreach (var mywant in usersWants)
                         {
                             var matches = _tradeLists.Haves.Where(h => h.CardInfo.TeamBuilderCode == mywant.CardInfo.TeamBuilderCode 
                                                                 && h.DiscordUsername != mywant.DiscordUsername
                                                                 ).ToList();
                             if(matches.Any())
                             {
-                                matchReportString.AppendLine($"Possible matches found for {mywant.CardInfo.TeamBuilderCode}: {mywant.CardInfo.RarityAbbreviation} {mywant.CardInfo.CardTitle}");
+                                bool addHeader = true;
                                 foreach(var match in matches)
                                 {
                                     // if the user is looking for only foil but the match isn't foil, skip it. Other way around is fine (i.e., not looking for foil can return foil).
                                     if (mywant.Foil && !mywant.NonFoil && !match.Foil) continue;
 
+                                    if(addHeader)
+                                    {
+                                        matchReportString.AppendLine($"Possible matches found for {mywant.CardInfo.TeamBuilderCode}: {mywant.CardInfo.RarityAbbreviation} {mywant.CardInfo.CardTitle}");
+                                        addHeader = false;
+                                    }
                                     var matchResponse = GetTradeMatchResponse(match, "sell");
                                     matchReportString.AppendLine(matchResponse);
                                 }
                             }
                         }
 
+                        matchReportString.AppendLine("");
+                        matchReportString.AppendLine("*** WANTS ***");
                         foreach (var myhave in usersHaves)
                         {
                             var matches = _tradeLists.Wants.Where(h => h.CardInfo.TeamBuilderCode == myhave.CardInfo.TeamBuilderCode
@@ -478,12 +486,17 @@ namespace DiceMastersDiscordBot.Services
                                                                 ).ToList();
                             if (matches.Any())
                             {
-                                matchReportString.AppendLine($"Possible matches found for {myhave.CardInfo.TeamBuilderCode}: {myhave.CardInfo.RarityAbbreviation} {myhave.CardInfo.CardTitle}");
+                                bool addHeader = true;
                                 foreach (var match in matches)
                                 {
                                     // if the match is looking for foil but the user isn't foil, skip it. Other way around is fine (i.e., not looking for foil can return foil).
                                     if (match.Foil && !myhave.Foil) continue;
 
+                                    if(addHeader)
+                                    {
+                                        matchReportString.AppendLine($"Possible matches found for {myhave.CardInfo.TeamBuilderCode}: {myhave.CardInfo.RarityAbbreviation} {myhave.CardInfo.CardTitle}");
+                                        addHeader = false;
+                                    }
                                     var matchResponse = GetTradeMatchResponse(match, "buy");
                                     matchReportString.AppendLine(matchResponse);
                                 }
@@ -1570,7 +1583,7 @@ namespace DiceMastersDiscordBot.Services
             string trade;
             if (match.Trade && match.SellOrBuy) trade = $"either trade or {buyorsell}.";
             else trade = match.Trade ? "trade" : "sell";
-            var response = $"{match.DiscordUsername} has a {foil} they are willing to {trade}";
+            var response = $"   **{match.DiscordUsername}** has a {foil} they are willing to {trade}";
             return response;
         }
 
