@@ -255,10 +255,10 @@ namespace DiceMastersDiscordBot.Services
 
                 if (IsRightNow(message))
                 {
-                    if(_random.Next(2) == 0)
-                    {
+                    //if(_random.Next(2) == 0)
+                    //{
                         await message.Channel.SendMessageAsync("STAY UP STAY UP");
-                    }
+                    //}
                 }
 
                 if (TagCierra(message))
