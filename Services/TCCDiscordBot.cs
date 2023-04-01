@@ -255,10 +255,19 @@ namespace DiceMastersDiscordBot.Services
 
                 if (IsRightNow(message))
                 {
-                    //if(_random.Next(2) == 0)
-                    //{
+                    if(_random.Next(2) == 0)
+                    {
                         await message.Channel.SendMessageAsync("STAY UP STAY UP");
-                    //}
+                    }
+                    else
+                    {
+                        await message.AddReactionAsync(Emoji.Parse(":regional_indicator_s:"));
+                        await message.AddReactionAsync(Emoji.Parse(":regional_indicator_t:"));
+                        await message.AddReactionAsync(Emoji.Parse(":regional_indicator_a:"));
+                        await message.AddReactionAsync(Emoji.Parse(":regional_indicator_y:"));
+                        await message.AddReactionAsync(Emoji.Parse(":regional_indicator_u:"));
+                        await message.AddReactionAsync(Emoji.Parse(":regional_indicator_p:"));
+                    }
                 }
 
                 if (TagCierra(message))
