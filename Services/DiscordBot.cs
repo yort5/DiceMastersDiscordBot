@@ -36,6 +36,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Logging;
+using static Google.Apis.Requests.BatchRequest;
 
 namespace DiceMastersDiscordBot.Services
 {
@@ -739,12 +740,14 @@ namespace DiceMastersDiscordBot.Services
                 }
 
                 _sheetService.UpdateTradeInfoCard(newOffer, isHave);
+                await modal.RespondAsync("Thank you, added!");
             }
             catch (Exception exc)
             {
                 _logger.LogError($"Exception trying to add card offer: {exc.Message}");
                 await modal.RespondAsync("Sorry, there was an issue with your submission.");
             }
+
         }
         #endregion
 
