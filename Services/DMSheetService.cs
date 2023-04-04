@@ -26,6 +26,7 @@ namespace DiceMastersDiscordBot.Services
         private readonly ILogger _logger;
         private readonly IAppSettings _settings;
         private readonly SheetsService _sheetService;
+        private readonly StringComparer comparer;
 
         private const string MasterUserSheetName = "UserSheet";
         private const string MasterYouTubeSheetName = "YouTubeSubs";
@@ -38,6 +39,8 @@ namespace DiceMastersDiscordBot.Services
         {
             _logger = loggerFactory.CreateLogger<DMSheetService>(); ;
             _settings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+
+            comparer = StringComparer.Create(CultureInfo.CurrentCulture, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
 
             _sheetService = AuthorizeGoogleSheets();
         }
@@ -705,13 +708,13 @@ namespace DiceMastersDiscordBot.Services
         }
 
 
-        internal bool UpdateCommunityTradeCard(TradeInfo cardTradeInfo, bool isHave)
+        internal bool UpdateTradeInfoCard(TradeInfo cardTradeInfo, bool isHave)
         {
             try
             {
                 var sheetName = isHave ? TradingHaveSheetName : TradingWantSheetName;
                 var communitySheetId = _settings.GetCommunitySheetId();
-                var range = $"{sheetName}!A:Z";
+                var range = $"{sheetName}!A:J";
 
                 // first check to see if this person already has a submission
                 var findExistingRequest = _sheetService.Spreadsheets.Values.Get(communitySheetId, range);
@@ -719,10 +722,10 @@ namespace DiceMastersDiscordBot.Services
                 bool existingEntryFound = false;
                 foreach (var record in existingCardRecords.Values)
                 {
-                    if (record[0].ToString().Equals(cardTradeInfo.CardInfo.TeamBuilderCode, StringComparison.CurrentCultureIgnoreCase))
+                    if (record.Count > 0 && record[0].ToString().Equals(cardTradeInfo.CardInfo.TeamBuilderCode, StringComparison.CurrentCultureIgnoreCase))
                     {
                         var index = existingCardRecords.Values.IndexOf(record);
-                        range = $"{sheetName}!A{index + 1}:G{index + 1}";
+                        range = $"{sheetName}!A{index + 1}:J{index + 1}";
                         existingEntryFound = true;
                         break;
                     }

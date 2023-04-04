@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -46,6 +48,7 @@ namespace DiceMastersDiscordBot.Services
         private readonly DiceMastersEventFactory _eventFactory;
         private YouTubeMonitorService _youTubeService;
         private ChallongeEvent _challonge;
+        private readonly StringComparer comparer;
         //private CommandService _commands;
 
 
@@ -70,6 +73,8 @@ namespace DiceMastersDiscordBot.Services
             _eventFactory = eventFactory;
             _youTubeService = youTubeService;
             _challonge = challonge;
+
+            comparer = StringComparer.Create(CultureInfo.CurrentCulture, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
         }
 
 
@@ -199,6 +204,11 @@ namespace DiceMastersDiscordBot.Services
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("check")
                     .WithDescription("Check your list against the other lists for matches.")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                )
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("offer")
+                    .WithDescription("Off up a card to list for sale or trade or that you want to buy or trade for.")
                     .WithType(ApplicationCommandOptionType.SubCommand)
                 );
             await RegisterCommand(tradeCommand, true);
@@ -451,7 +461,7 @@ namespace DiceMastersDiscordBot.Services
                         var usersHaves = _tradeLists.Haves.Where(w => w.DiscordUsername == command.User.Username).ToList();
                         StringBuilder matchReportString = new StringBuilder();
                         matchReportString.AppendLine($"Trade Report for {command.User.Username}");
-                        matchReportString.AppendLine("*** WANTS ***");
+                        matchReportString.AppendLine("--- WANTS ---");
 
                         foreach (var mywant in usersWants)
                         {
@@ -478,7 +488,7 @@ namespace DiceMastersDiscordBot.Services
                         }
 
                         matchReportString.AppendLine("");
-                        matchReportString.AppendLine("*** WANTS ***");
+                        matchReportString.AppendLine("--- HAVES ---");
                         foreach (var myhave in usersHaves)
                         {
                             var matches = _tradeLists.Wants.Where(h => h.CardInfo.TeamBuilderCode == myhave.CardInfo.TeamBuilderCode
@@ -503,6 +513,20 @@ namespace DiceMastersDiscordBot.Services
                             }
                         }
                         await command.RespondAsync(matchReportString.ToString());
+                    }
+                    break;
+                case "offer":
+                    {
+                        var mb = new ModalBuilder()
+                           .WithTitle("Offer up a card for trade/sale")
+                           .WithCustomId("card_offer")
+                           .AddTextInput("The Team Builder Code of the card", "offer_code", placeholder: "avx001")
+                           .AddTextInput("Do you WANT this card or HAVE this card", "offer_havewant", placeholder: "want")
+                           .AddTextInput("Do you want to trade, buy/sell, or either?,", "offer_trade", placeholder: "either", value: "either")
+                           .AddTextInput("Is this the foil version of the card", "offer_foil", placeholder: "either", value: "either")
+                           .AddTextInput("Add text here if Promo card (full art, etc)", "offer_promo", placeholder: "na", value: " ");
+
+                        await command.RespondWithModalAsync(mb.Build());
                     }
                     break;
             }
@@ -630,12 +654,9 @@ namespace DiceMastersDiscordBot.Services
                 case "team_submit":
                     await HandleTeamSubmitModalResponseAsync(modal);
                     break;
-                //case "card_have":
-                //    await HandleCardHaveModalResponseAsync(modal);
-                //    break;
-                //case "card_want":
-                //    await HandleCardWantModalResponseAsync(modal);
-                //    break;
+                case "card_offer":
+                    await HandleCardOfferModalResponseAsync(modal);
+                    break;
             }
         }
         
@@ -658,37 +679,73 @@ namespace DiceMastersDiscordBot.Services
             await modal.RespondAsync(response);
             await modal.User.SendMessageAsync($"The following team was successfully submitted for {eventUserInput.EventName}{Environment.NewLine}{eventUserInput.TeamLink}");
         }
-        /*
-        private async Task HandleCardHaveModalResponseAsync(SocketModal modal)
+        
+        private async Task HandleCardOfferModalResponseAsync(SocketModal modal)
         {
-            List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
-            string cardCode = modalComponents.First(x => x.CustomId == "card_code").Value;
-            string cardFoil = modalComponents.First(x => x.CustomId == "card_foil").Value;
-            string cardMethod = modalComponents.First(x => x.CustomId == "card_method").Value;
-
-            var cardInfo = GetCommunityCardInfoFromCodeString(cardCode);
-            if(!cardInfo.HaveFoilToSell.Contains(modal.User.Username))
+            try
             {
-                cardInfo.HaveFoilToSell = string.IsNullOrEmpty(cardInfo.HaveFoilToSell) ? modal.User.Username : $"{cardInfo.HaveFoilToSell},{modal.User.Username}";
+
+                List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
+                string cardCode = modalComponents.First(x => x.CustomId == "offer_code").Value;
+                string cardHaveOrWant = modalComponents.First(x => x.CustomId == "offer_havewant").Value;
+                string cardTrade = modalComponents.First(x => x.CustomId == "offer_trade").Value;
+                string cardFoil = modalComponents.First(x => x.CustomId == "offer_foil").Value;
+                string cardPromo = modalComponents.First(x => x.CustomId == "offer_promo").Value;
+
+                bool isHave = comparer.Equals(cardHaveOrWant, "have");
+
+                var cardInfo = GetCommunityCardInfoFromCodeString(cardCode);
+                TradeInfo newOffer = new TradeInfo
+                {
+                    CardInfo = cardInfo,
+                    DiscordUsername = modal.User.Username,
+                };
+
+                if(comparer.Equals(cardFoil, "foil"))
+                {
+                    newOffer.Foil = true;
+                }
+                else if(comparer.Equals(cardFoil, "nonfoil"))
+                {
+                    newOffer.NonFoil = true;
+                }
+                else                                                    
+                {
+                    newOffer.Foil = true;
+                    newOffer.NonFoil = true;
+                }
+
+                if (comparer.Equals(cardTrade, "either"))
+                {
+                    newOffer.Trade = true;
+                    newOffer.SellOrBuy = true;
+                }
+                else if (comparer.Equals(cardTrade, "trade"))
+                {
+                    newOffer.Trade = true;
+                }
+                else
+                {
+                    newOffer.SellOrBuy = true;
+                }
+
+                if(string.IsNullOrEmpty(cardPromo) || comparer.Equals(cardPromo, "na"))
+                {
+                    newOffer.Promo = string.Empty;
+                }
+                else
+                {
+                    newOffer.Promo = cardPromo;
+                }
+
+                _sheetService.UpdateTradeInfoCard(newOffer, isHave);
             }
-            // modify
-            var result = _sheetService.UpdateCommunityCard(cardInfo);
-
-            await modal.RespondAsync($"User {modal.User.Username} has a {cardInfo.TeamBuilderId} for sale/trade!");
-            if (string.IsNullOrEmpty(cardInfo.WantFoilForTrade))
+            catch (Exception exc)
             {
-                await modal.RespondAsync($"Found these users that have a FOIL for TRADE: {cardInfo.WantFoilForTrade}");
+                _logger.LogError($"Exception trying to add card offer: {exc.Message}");
+                await modal.RespondAsync("Sorry, there was an issue with your submission.");
             }
         }
-
-        private async Task HandleCardWantModalResponseAsync(SocketModal modal)
-        {
-            List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
-            string cardCode = modalComponents.First(x => x.CustomId == "card_code").Value;
-            string cardFoil = modalComponents.First(x => x.CustomId == "card_foil").Value;
-            string cardMethod = modalComponents.First(x => x.CustomId == "card_method").Value;
-        }
-        */
         #endregion
 
         private async Task LoadTradeLists()
