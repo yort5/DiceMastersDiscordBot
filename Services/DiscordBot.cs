@@ -179,14 +179,6 @@ namespace DiceMastersDiscordBot.Services
                     .WithDescription("List a card that you WANT and will trade for or buy.")
                     .WithType(ApplicationCommandOptionType.SubCommand)
                     .AddOption("code", ApplicationCommandOptionType.String, "The Team Builder code of the card")
-                    //.AddOption("foil", ApplicationCommandOptionType.Boolean, "Is this a foil version of the card?")
-                    //.AddOption(new SlashCommandOptionBuilder()
-                    //    .WithName("type")
-                    //    .WithDescription("Are you looking to trade, buy, or either?")
-                    //    .AddChoice("Trade", 1)
-                    //    .AddChoice("Buy", 2)
-                    //    .AddChoice("Either", 3)
-                    //    .WithType(ApplicationCommandOptionType.Integer))
                 )
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("have")
@@ -211,8 +203,12 @@ namespace DiceMastersDiscordBot.Services
                     .WithName("offer")
                     .WithDescription("Off up a card to list for sale or trade or that you want to buy or trade for.")
                     .WithType(ApplicationCommandOptionType.SubCommand)
+                ).AddOption(new SlashCommandOptionBuilder()
+                    .WithName("refresh")
+                    .WithDescription("Manually triggers the bot to refresh the trade lists (rather than wait until tomorrow).")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
                 );
-            await RegisterCommand(tradeCommand, true);
+            await RegisterCommand(tradeCommand);
 
         }
 
@@ -528,6 +524,12 @@ namespace DiceMastersDiscordBot.Services
                            .AddTextInput("Add text here if Promo card (full art, etc)", "offer_promo", placeholder: "na", value: " ");
 
                         await command.RespondWithModalAsync(mb.Build());
+                    }
+                    break;
+                case "refresh":
+                    {
+                        await command.RespondAsync($"{command.User.Username} triggered refresh of trade sheets (may take a few minutes)");
+                        await LoadTradeLists();
                     }
                     break;
             }
