@@ -378,10 +378,10 @@ namespace DiceMastersDiscordBot.Services
             {
                 case "have":
                     {
-                        var cardCode = command.Data.Options.First().Options.First().Value.ToString();
-                        var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => c.TeamBuilderCode.ToLower() == cardCode.ToLower());
+                        var teamBuilderCode = command.Data.Options.First().Options.First().Value.ToString();
+                        var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => comparer.Equals(c.TeamBuilderCode, teamBuilderCode));
 
-                        var possibleMatches = _tradeLists.Wants.Where(t => t.CardInfo.TeamBuilderCode.ToLower() == cardCode.ToLower());
+                        var possibleMatches = _tradeLists.Wants.Where(t => comparer.Equals(t.CardInfo.TeamBuilderCode, teamBuilderCode));
                         if (possibleMatches.Any())
                         {
                             try
@@ -416,10 +416,10 @@ namespace DiceMastersDiscordBot.Services
                     break;
                 case "want":
                     {
-                        var cardCode = command.Data.Options.First().Options.First().Value.ToString();
-                        var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => c.TeamBuilderCode.ToLower() == cardCode.ToLower());
+                        var teamBuilderCode = command.Data.Options.First().Options.First().Value.ToString();
+                        var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => comparer.Equals(c.TeamBuilderCode, teamBuilderCode));
 
-                        var possibleMatches = _tradeLists.Haves.Where(t => t.CardInfo.TeamBuilderCode == cardCode.ToLower());
+                        var possibleMatches = _tradeLists.Haves.Where(t => comparer.Equals(t.CardInfo.TeamBuilderCode, teamBuilderCode));
                         if (possibleMatches.Any())
                         {
                             try
