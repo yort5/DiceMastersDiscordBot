@@ -272,8 +272,14 @@ namespace DiceMastersDiscordBot.Services
 
                 if (IsShirt(message))
                 {
-                    await message.AddReactionAsync(Emoji.Parse(":SHIRT1:"));
-                    await message.AddReactionAsync(Emoji.Parse(":SHIRT2:"));
+                    if (Emote.TryParse("<:SHIRT1:1093660492586811503>", out var shirt1))
+                    {
+                        await message.AddReactionAsync(shirt1);
+                    }
+                    if (Emote.TryParse("<:SHIRT2:1093659961982193775>", out var shirt2))
+                    {
+                        await message.AddReactionAsync(shirt2);
+                    }
                 }
 
                 if (TagCierra(message))
