@@ -31,7 +31,9 @@ using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using Google.Apis.Util.Store;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.Internal;
@@ -1521,8 +1523,9 @@ namespace DiceMastersDiscordBot.Services
                 }
             }
         }
-        private void CheckRSSFeeds()
+        private async void CheckRSSFeeds()
         {
+            var markdownConverter = new Html2Markdown.Converter();
             var rssFeeds = _sheetService.LoadRSSFeedInfo();
             foreach (var feed in rssFeeds)
             {
@@ -1552,10 +1555,85 @@ namespace DiceMastersDiscordBot.Services
                                 {
                                     channelIds = _settings.GetDiceMastersMediaChannelIds();
                                 }
+
+                                var channelEmbed = new EmbedBuilder
+                                {
+                                    Title = $"{item.Title.Text}",
+                                };
+
+                                if(item.Summary == null || string.IsNullOrEmpty(item.Summary.Text))
+                                {
+                                    channelEmbed
+                                        .AddField("Url", links)
+                                        .WithFooter(footer => footer.Text = feed.SiteName);
+                                }
+                                else
+                                {
+                                    
+                                    channelEmbed
+                                        .AddField("Summary", markdownConverter.Convert(item.Summary.Text))
+                                        .AddField("Url", links)
+                                        .WithFooter(footer => footer.Text = feed.SiteName);
+                                }
+
+                                if(item.Categories != null && item.Categories.Any() && item.Categories.First().Name == "Dice Masters Rules Questions")
+                                {
+                                    channelEmbed.Title = item.Title.Text.Replace("Dice Masters Rules Questions • ", "");
+                                    var contentText = ((TextSyndicationContent)item.Content).Text;
+                                    var markupContent = markdownConverter.Convert(contentText);
+                                    channelEmbed.AddField("Content", markupContent);
+                                }
+
                                 foreach (var channelId in channelIds)
                                 {
-                                    var discordChannel = _client.GetChannel(channelId) as IMessageChannel;
-                                    discordChannel.SendMessageAsync(messageString);
+                                    var discordChannel = _client.GetChannel(channelId);
+                                    var channelType = discordChannel.GetChannelType();
+                                    if(channelType == ChannelType.Forum)
+                                    {
+                                        var threadTitle = channelEmbed.Title.Replace("Re: ", "");
+
+                                        List<ForumTag> forumTags = new List<ForumTag>();
+                                        string rulesForumId = string.Empty;
+                                        var rootUri = item.Links.First().Uri;
+                                        var pieces = QueryHelpers.ParseQuery(rootUri.Query);
+                                        // look for a "p" value
+                                        if (pieces.Any(p => p.Key == "p"))
+                                        {
+                                            rulesForumId = pieces.FirstOrDefault(p => p.Key == "p").Value;
+                                            //ForumTagBuilder builder = new ForumTagBuilder().WithName(rulesForumId);
+                                            //ForumTag tag = new ForumTag()
+                                            //var forumTag = builder.Build() as IForumTag;
+                                            //forumTags.Add((ForumTag)forumTag);
+                                        }
+
+                                        var forumChannel = discordChannel as IForumChannel;
+
+                                        var existingTags = forumChannel.Tags;
+                                        var matchingTag = existingTags.FirstOrDefault(t => t.Name == rulesForumId);
+
+                                        var activeThreads = await forumChannel.GetActiveThreadsAsync();
+                                        var archivedThreads = await forumChannel.GetPublicArchivedThreadsAsync();
+
+                                        var matchingThread = activeThreads.Where(t => t.AppliedTags.Contains(matchingTag.Id));
+                                        if(!matchingThread.Any())
+                                        {
+                                            matchingThread = archivedThreads.Where(t => t.AppliedTags.Contains(matchingTag.Id));
+                                        }
+
+                                        if (matchingThread.Any())
+                                        {
+                                            await matchingThread.FirstOrDefault().SendMessageAsync(text: threadTitle, embed: channelEmbed.Build());
+                                        }
+                                        else
+                                        {
+                                            var threadChannel = await forumChannel.CreatePostAsync(threadTitle, text: messageString, archiveDuration: ThreadArchiveDuration.OneWeek, embed: channelEmbed.Build(), tags: forumTags.ToArray());
+                                        }
+                                    }
+                                    else
+                                    {
+                                        var messageChannel = discordChannel as IMessageChannel;
+                                        await messageChannel.SendMessageAsync(embed: channelEmbed.Build());
+                                    }
                                     Console.WriteLine(messageString);
                                 }
                             }
