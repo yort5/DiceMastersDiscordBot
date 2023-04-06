@@ -270,6 +270,12 @@ namespace DiceMastersDiscordBot.Services
                     }
                 }
 
+                if (IsShirt(message))
+                {
+                    await message.AddReactionAsync(Emoji.Parse(":SHIRT1:"));
+                    await message.AddReactionAsync(Emoji.Parse(":SHIRT2:"));
+                }
+
                 if (TagCierra(message))
                 {
                     var cee = await message.Channel.GetUserAsync(_settings.GetCierraNotificationId());
@@ -374,6 +380,17 @@ namespace DiceMastersDiscordBot.Services
         {
             // probably should change this to a string list compare
             if (message.Content.ToLower().Contains("right now", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsShirt(SocketMessage message)
+        {
+            // probably should change this to a string list compare
+            if (message.Content.ToLower().Contains("shirt", StringComparison.CurrentCultureIgnoreCase))
             {
                 return true;
             }
