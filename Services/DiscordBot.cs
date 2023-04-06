@@ -1593,36 +1593,23 @@ namespace DiceMastersDiscordBot.Services
                                         var threadTitle = channelEmbed.Title.Replace("Re: ", "");
 
                                         List<ForumTag> forumTags = new List<ForumTag>();
-                                        string rulesForumId = string.Empty;
-                                        var rootUri = item.Links.First().Uri;
-                                        var pieces = QueryHelpers.ParseQuery(rootUri.Query);
-                                        // look for a "p" value
-                                        if (pieces.Any(p => p.Key == "p"))
-                                        {
-                                            rulesForumId = pieces.FirstOrDefault(p => p.Key == "p").Value;
-                                            //ForumTagBuilder builder = new ForumTagBuilder().WithName(rulesForumId);
-                                            //ForumTag tag = new ForumTag()
-                                            //var forumTag = builder.Build() as IForumTag;
-                                            //forumTags.Add((ForumTag)forumTag);
-                                        }
-
                                         var forumChannel = discordChannel as IForumChannel;
+                                        var matchingTag = forumChannel.Tags.FirstOrDefault(t => t.Name == "WKRF");
+                                        forumTags.Add(matchingTag);
 
-                                        var existingTags = forumChannel.Tags;
-                                        var matchingTag = existingTags.FirstOrDefault(t => t.Name == rulesForumId);
 
                                         var activeThreads = await forumChannel.GetActiveThreadsAsync();
                                         var archivedThreads = await forumChannel.GetPublicArchivedThreadsAsync();
 
-                                        var matchingThread = activeThreads.Where(t => t.AppliedTags.Contains(matchingTag.Id));
+                                        var matchingThread = activeThreads.Where(t => comparer.Equals(t.Name, threadTitle));
                                         if(!matchingThread.Any())
                                         {
-                                            matchingThread = archivedThreads.Where(t => t.AppliedTags.Contains(matchingTag.Id));
+                                            matchingThread = archivedThreads.Where(t => comparer.Equals(t.Name, threadTitle));
                                         }
 
                                         if (matchingThread.Any())
                                         {
-                                            await matchingThread.FirstOrDefault().SendMessageAsync(text: threadTitle, embed: channelEmbed.Build());
+                                            await matchingThread.FirstOrDefault().SendMessageAsync(text: messageString, embed: channelEmbed.Build());
                                         }
                                         else
                                         {
