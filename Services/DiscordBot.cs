@@ -1537,7 +1537,7 @@ namespace DiceMastersDiscordBot.Services
                         SyndicationFeed sFeed = SyndicationFeed.Load(reader);
                         reader.Close();
 
-                        foreach (SyndicationItem item in sFeed.Items)
+                        foreach (SyndicationItem item in sFeed.Items.OrderBy(o => o.PublishDate.UtcDateTime))
                         {
                             if (item.PublishDate.UtcDateTime > feed.DateLastChecked)
                             {
@@ -1580,8 +1580,16 @@ namespace DiceMastersDiscordBot.Services
                                 {
                                     channelEmbed.Title = item.Title.Text.Replace("Dice Masters Rules Questions • ", "");
                                     var contentText = ((TextSyndicationContent)item.Content).Text;
-                                    var markupContent = markdownConverter.Convert(contentText);
-                                    channelEmbed.AddField("Content", markupContent);
+                                    var contentminusblockquote = contentText.Replace("<blockquote class=\"uncited\">", "");
+                                    var markupContent = markdownConverter.Convert(contentminusblockquote);
+                                    if(markupContent.Length > 1000)
+                                    {
+                                        channelEmbed.AddField("Content", markupContent.Substring(0, 1000)); // max 1024 on embed
+                                    }
+                                    else
+                                    {
+                                        channelEmbed.AddField("Content", markupContent);
+                                    }
                                 }
 
                                 foreach (var channelId in channelIds)

@@ -588,7 +588,7 @@ namespace DiceMastersDiscordBot.Services
                         var characterName = GetStringFromRecord(record, 2);
                         var rarity = GetStringFromRecord(record, 3);
 
-                        var isThisYourCard = GetCardFromTraits(communityInfo, teamBuilderCode, set, characterName, rarity, comparer, _logger);
+                        var isThisYourCard = communityInfo.GetCardFromTraits(teamBuilderCode, set, characterName, rarity, comparer, _logger);
                         if (!string.IsNullOrEmpty(isThisYourCard.TeamBuilderCode))
                         {
                             TradeInfo tradeCard = new TradeInfo
@@ -671,7 +671,7 @@ namespace DiceMastersDiscordBot.Services
                         }
 
 
-                        var isThisYourCard = GetCardFromTraits(communityInfo, string.Empty, set, characterName, rarity, comparer, _logger);
+                        var isThisYourCard = communityInfo.GetCardFromTraits(string.Empty, set, characterName, rarity, comparer, _logger);
                         if (!string.IsNullOrEmpty(isThisYourCard.TeamBuilderCode))
                         {
                             TradeInfo tradeCard = new TradeInfo
@@ -1225,57 +1225,6 @@ namespace DiceMastersDiscordBot.Services
             var stringValue = (record.Count >= (index + 1) && record[index] != null) ? record[index].ToString() : string.Empty;
             Boolean.TryParse(stringValue, out bool isTrue);
             return isTrue;
-        }
-
-        private static CommunityCardInfo GetCardFromTraits(CommunityInfo communityInfo, string teamBuilderCode, string setCode, string cardName, string rarity, StringComparer comparer, ILogger logger)
-        {
-            var formattedTeamBuilderCode = CommunityCardInfo.GetFormattedTeamBuilderCode(teamBuilderCode);
-            var teamBuilderMatch = communityInfo.Cards.Where(c => comparer.Equals(formattedTeamBuilderCode, c.TeamBuilderCode));
-            if(teamBuilderMatch.Any())
-            {
-                return teamBuilderMatch.FirstOrDefault();
-            }
-
-            if (setCode == "OP") setCode = "PROMO";
-
-            var findMatchingCharacters = communityInfo.Cards.Where(c => comparer.Equals(cardName, c.CardTitle));
-
-            // if we didn't find a straight-up match, try without special characters. i.e., "Spider-man" vs "Spiderman"
-            if (!findMatchingCharacters.Any())
-            {
-                findMatchingCharacters = communityInfo.Cards.Where(c => comparer.Equals(Regex.Replace(cardName, @"[^\w\d]", ""), Regex.Replace(c.CardTitle, @"[^\w\d]", "")));
-            }
-
-            // if we STILL haven't found a match, try a "contains". This can produce false positives, but will catch when extra text has been
-            // added, like "Magneto (no die)".
-            if (!findMatchingCharacters.Any())
-            {
-                findMatchingCharacters = communityInfo.Cards.Where(c => cardName.ToLower().Contains(c.CardTitle.ToLower()));
-            }
-
-            // first try to match on set code
-            var setInfo = communityInfo.Sets.FirstOrDefault(s => s.SetCode.ToLower().Contains(setCode.ToLower()));
-            // If that doesn't match, try to match on the full name
-            if (setInfo == null)
-            {
-                setInfo = communityInfo.Sets.FirstOrDefault(s => s.SetName.ToLower().Contains(setCode.ToLower()));
-            }
-            // If THAT doesn't work, try without special characters, i.e., "Avengers Vs X-Men" vs "Avengers Vs. X-Men"
-            if (setInfo == null)
-            {
-                setInfo = communityInfo.Sets.FirstOrDefault(s => comparer.Equals(Regex.Replace(s.SetName, @"[^\w\d]", ""), Regex.Replace(setCode, @"[^\w\d]", "")));
-            }
-
-            var matchSetAndRarity = findMatchingCharacters.Where(f => f.SetCode == setInfo.SetCode 
-                                                                && (comparer.Equals(rarity, f.Rarity) || comparer.Equals(rarity, f.RarityAbbreviation)) );
-
-            if (!matchSetAndRarity.Any())
-            {
-                logger.LogInformation($"Couldn't find match for set = {setCode}, rarity = {rarity}, charcter = {cardName}");
-                return new CommunityCardInfo();
-            }
-            var isThisYourCard = matchSetAndRarity.FirstOrDefault();
-            return isThisYourCard;
         }
         #endregion
     }
