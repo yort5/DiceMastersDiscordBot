@@ -423,13 +423,12 @@ namespace DiceMastersDiscordBot.Services
                         var teamBuilderCode = CommunityCardInfo.GetFormattedTeamBuilderCode(teamBuilderCodeString);
                         var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => comparer.Equals(c.TeamBuilderCode, teamBuilderCode));
 
-                        var possibleMatches = _tradeLists.Haves.Where(t => comparer.Equals(t.CardInfo.TeamBuilderCode, teamBuilderCode));
+                        var possibleMatches = _tradeLists.Haves.Where(t => comparer.Equals(t.CardInfo.TeamBuilderCode, teamBuilderCode) 
+                                                                            && t.DiscordUsername != command.User.Username);
                         if (possibleMatches.Any())
                         {
                             try
                             {
-                                StringBuilder possibleUserMatches = new StringBuilder();
-                                var usersString = string.Join(",", possibleMatches.Select(c => c.DiscordUsername));
                                 StringBuilder responseString = new StringBuilder();
                                 responseString.AppendLine($"{command.User.Username} is looking for {fullCardInfo.TeamBuilderCode} - {fullCardInfo.Rarity} {fullCardInfo.CardTitle}");
                                 responseString.AppendLine("We found the following users may be possible matches:");
