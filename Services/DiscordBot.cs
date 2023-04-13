@@ -380,7 +380,8 @@ namespace DiceMastersDiscordBot.Services
             {
                 case "have":
                     {
-                        var teamBuilderCode = command.Data.Options.First().Options.First().Value.ToString();
+                        var teamBuilderCodeString = command.Data.Options.First().Options.First().Value.ToString();
+                        var teamBuilderCode = CommunityCardInfo.GetFormattedTeamBuilderCode(teamBuilderCodeString);
                         var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => comparer.Equals(c.TeamBuilderCode, teamBuilderCode));
 
                         var possibleMatches = _tradeLists.Wants.Where(t => comparer.Equals(t.CardInfo.TeamBuilderCode, teamBuilderCode));
@@ -418,7 +419,8 @@ namespace DiceMastersDiscordBot.Services
                     break;
                 case "want":
                     {
-                        var teamBuilderCode = command.Data.Options.First().Options.First().Value.ToString();
+                        var teamBuilderCodeString = command.Data.Options.First().Options.First().Value.ToString();
+                        var teamBuilderCode = CommunityCardInfo.GetFormattedTeamBuilderCode(teamBuilderCodeString);
                         var fullCardInfo = _communityInfo.Cards.FirstOrDefault(c => comparer.Equals(c.TeamBuilderCode, teamBuilderCode));
 
                         var possibleMatches = _tradeLists.Haves.Where(t => comparer.Equals(t.CardInfo.TeamBuilderCode, teamBuilderCode));
