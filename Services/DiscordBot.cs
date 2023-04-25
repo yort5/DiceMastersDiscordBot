@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using Azure;
+using ChallongeSharp.Models.ChallongeModels;
 using ChallongeSharp.Models.ViewModels;
 using ChallongeSharp.Models.ViewModels.Types;
 using DiceMastersDiscordBot.Entities;
@@ -515,11 +516,41 @@ namespace DiceMastersDiscordBot.Services
                                 }
                             }
                         }
+
+                        var userBasedReport = new StringBuilder();
+                        var allMatchedUsers = matchWants.UnionBy(matchHaves, u => u.DiscordUsername);
+                        foreach(var user in allMatchedUsers)
+                        {
+                            userBasedReport.AppendLine($"Matches for User {user}");
+                            userBasedReport.AppendLine("They WANT");
+                            foreach(var userWant in matchWants.Where(h => h.DiscordUsername == user.DiscordUsername))
+                            {
+                                userBasedReport.AppendLine(GetTradeMatchResponse(userWant, "buy"));
+                            }
+                            userBasedReport.AppendLine($"They HAVE");
+                            foreach (var userHave in matchHaves.Where(h => h.DiscordUsername == user.DiscordUsername))
+                            {
+                                userBasedReport.AppendLine(GetTradeMatchResponse(userHave, "sell"));
+                            }
+                            userBasedReport.AppendLine();
+                            userBasedReport.AppendLine(" --------------------- "); 
+                            userBasedReport.AppendLine();
+                        }
+
                         var tempDirectoryPath = Environment.GetEnvironmentVariable("TEMP");
                         var filePath = Path.Combine(tempDirectoryPath, "matchreport.txt");
+                        var fullReport = new StringBuilder();
+                        fullReport.AppendLine("******* Initial Report **********");
+                        fullReport.AppendLine();
+                        fullReport.AppendLine(matchReportString.ToString());
+                        fullReport.AppendLine();
+                        fullReport.AppendLine("******* Report by User **********");
+                        fullReport.AppendLine();
+                        fullReport.AppendLine(userBasedReport.ToString());
+
                         await File.WriteAllTextAsync(filePath, matchReportString.ToString());
                         await command.RespondWithFileAsync(filePath, $"DiceMastersTrades.txt", ephemeral: true);
-                        await command.Channel.SendMessageAsync($"Found {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.");
+                        await command.Channel.SendMessageAsync($"Checking lists for {command.User.Username}:{Environment.NewLine}Found {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.");
                     }
                     break;
                 case "offer":
