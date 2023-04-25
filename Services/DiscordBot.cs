@@ -1756,7 +1756,7 @@ namespace DiceMastersDiscordBot.Services
             else foil = match.Foil ? "foil" : "non-foil";
             string trade;
             if (match.Trade && match.SellOrBuy) trade = $"either trade or {buyorsell}.";
-            else trade = match.Trade ? "trade" : "sell";
+            else trade = match.Trade ? "trade" : buyorsell;
             var response = $"{foil} they are willing to {trade}";
             return response;
         }
