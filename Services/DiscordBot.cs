@@ -483,7 +483,7 @@ namespace DiceMastersDiscordBot.Services
                                         matchReportString.AppendLine($"Possible matches found for {mywant.CardInfo.TeamBuilderCode}: {mywant.CardInfo.RarityAbbreviation} {mywant.CardInfo.CardTitle}");
                                         addHeader = false;
                                     }
-                                    var matchResponse = GetTradeMatchResponse(match, "sell");
+                                    var matchResponse = $"   **{match.DiscordUsername}** has {GetTradeMatchResponseTag(match, "sell")}";
                                     matchHaves.Add(match);
                                     matchReportString.AppendLine(matchResponse);
                                 }
@@ -510,7 +510,7 @@ namespace DiceMastersDiscordBot.Services
                                         matchReportString.AppendLine($"Possible matches found for {myhave.CardInfo.TeamBuilderCode}: {myhave.CardInfo.RarityAbbreviation} {myhave.CardInfo.CardTitle}");
                                         addHeader = false;
                                     }
-                                    var matchResponse = GetTradeMatchResponse(match, "buy");
+                                    var matchResponse = $"   **{match.DiscordUsername}** has {GetTradeMatchResponseTag(match, "buy")}";
                                     matchWants.Add(match);
                                     matchReportString.AppendLine(matchResponse);
                                 }
@@ -521,16 +521,16 @@ namespace DiceMastersDiscordBot.Services
                         var allMatchedUsers = matchWants.UnionBy(matchHaves, u => u.DiscordUsername);
                         foreach(var user in allMatchedUsers)
                         {
-                            userBasedReport.AppendLine($"Matches for User {user}");
+                            userBasedReport.AppendLine($"Matches for User {user.DiscordUsername}");
                             userBasedReport.AppendLine("They WANT");
                             foreach(var userWant in matchWants.Where(h => h.DiscordUsername == user.DiscordUsername))
                             {
-                                userBasedReport.AppendLine(GetTradeMatchResponse(userWant, "buy"));
+                                userBasedReport.AppendLine($"{userWant.CardInfo.TeamBuilderCode}: {userWant.CardInfo.RarityAbbreviation} {userWant.CardInfo.CardTitle} - {GetTradeMatchResponseTag(userWant, "buy")}");
                             }
                             userBasedReport.AppendLine($"They HAVE");
                             foreach (var userHave in matchHaves.Where(h => h.DiscordUsername == user.DiscordUsername))
                             {
-                                userBasedReport.AppendLine(GetTradeMatchResponse(userHave, "sell"));
+                                userBasedReport.AppendLine($"{userHave.CardInfo.TeamBuilderCode}: {userHave.CardInfo.RarityAbbreviation} {userHave.CardInfo.CardTitle} - {GetTradeMatchResponseTag(userHave, "sell")}");
                             }
                             userBasedReport.AppendLine();
                             userBasedReport.AppendLine(" --------------------- "); 
@@ -1749,7 +1749,7 @@ namespace DiceMastersDiscordBot.Services
             return _communityInfo.Cards.Single(c => c.TeamBuilderCode.ToLower() == teamBuilderCode.ToLower());
         }
 
-        private static string GetTradeMatchResponse(TradeInfo match, string buyorsell)
+        private static string GetTradeMatchResponseTag(TradeInfo match, string buyorsell)
         {
             string foil;
             if (match.Foil && match.NonFoil) foil = "both foil and non-foil";
@@ -1757,7 +1757,7 @@ namespace DiceMastersDiscordBot.Services
             string trade;
             if (match.Trade && match.SellOrBuy) trade = $"either trade or {buyorsell}.";
             else trade = match.Trade ? "trade" : "sell";
-            var response = $"   **{match.DiscordUsername}** has a {foil} they are willing to {trade}";
+            var response = $"{foil} they are willing to {trade}";
             return response;
         }
 
