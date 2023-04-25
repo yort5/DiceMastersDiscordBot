@@ -50,6 +50,8 @@ namespace DiceMastersDiscordBot.Entities
                 setInfo = this.Sets.FirstOrDefault(s => comparer.Equals(Regex.Replace(s.SetName, @"[^\w\d]", ""), Regex.Replace(setCode, @"[^\w\d]", "")));
             }
 
+            if (setInfo == null) return new CommunityCardInfo();
+
             var matchSetAndRarity = findMatchingCharacters.Where(f => f.SetCode == setInfo.SetCode
                                                                 && (comparer.Equals(rarity, f.Rarity) || comparer.Equals(rarity, f.RarityAbbreviation)));
 

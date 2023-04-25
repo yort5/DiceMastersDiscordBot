@@ -34,6 +34,7 @@ namespace DiceMastersDiscordBot.Services
         private const string DROPPED = "DROPPED";
         private const string TradingHaveSheetName = "Trading - Haves";
         private const string TradingWantSheetName = "Trading - Wants";
+        private const int TRADESHEETTHRESHHOLD = 100;
 
         public DMSheetService(ILoggerFactory loggerFactory, IAppSettings appSettings)
         {
@@ -496,9 +497,9 @@ namespace DiceMastersDiscordBot.Services
                     tradeList.Wants.AddRange(tradeWants);
                     if(!tradeHaves.Any() && !tradeWants.Any())  // if nothing loaded, try the alternate format
                     {
-                        tradeHaves = LoadAndyTradeSheet(tradeSheet, "I have these items for trade", communityInfo);
+                        tradeHaves = LoadAndyTradeSheet(tradeSheet, TradingHaveSheetName, communityInfo);
                         tradeList.Haves.AddRange(tradeHaves);
-                        tradeWants = LoadAndyTradeSheet(tradeSheet, "I want these items", communityInfo);
+                        tradeWants = LoadAndyTradeSheet(tradeSheet, TradingWantSheetName, communityInfo);
                         tradeList.Wants.AddRange(tradeWants);
                     }
                 });
@@ -576,13 +577,6 @@ namespace DiceMastersDiscordBot.Services
                 {
                     try
                     {
-                        if (values.IndexOf(record) == 0)
-                        {
-                            sheetDiscordUser = GetStringFromRecord(record, 1);
-                            continue;
-                        }
-                        if (values.IndexOf(record) <= 3) continue;  // skip lines 2-4
-
                         var teamBuilderCode = GetStringFromRecord(record, 0);
                         var set = GetStringFromRecord(record, 1);
                         var characterName = GetStringFromRecord(record, 2);
@@ -598,7 +592,7 @@ namespace DiceMastersDiscordBot.Services
                                 Foil = GetBooleanFromRecord(record, 5),
                                 SellOrBuy = GetBooleanFromRecord(record, 6),
                                 Trade = GetBooleanFromRecord(record, 7),
-                                DiscordUsername = !string.IsNullOrEmpty(sheetDiscordUser) ? sheetDiscordUser : GetStringFromRecord(record, 9),
+                                DiscordUsername = !string.IsNullOrEmpty(tradeSheet.DiscordUsername) ? tradeSheet.DiscordUsername : GetStringFromRecord(record, 9),
                                 Promo = GetStringFromRecord(record, 8),
                             };
                             tradeInfoCards.Add(tradeCard);
@@ -615,7 +609,7 @@ namespace DiceMastersDiscordBot.Services
                     }
 
                     // if we've hit five rows of exceptions, we're probably past the valid data.
-                    if (blankRowExceptions >= 5) break;
+                    if (blankRowExceptions >= TRADESHEETTHRESHHOLD) break;
                 }
             }
             catch (Exception exc)
