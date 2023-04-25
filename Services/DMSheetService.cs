@@ -572,7 +572,6 @@ namespace DiceMastersDiscordBot.Services
                 int blankRowExceptions = 0;
                 var comparer = StringComparer.Create(CultureInfo.CurrentCulture, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
 
-                var sheetDiscordUser = string.Empty;
                 foreach (var record in values)
                 {
                     try

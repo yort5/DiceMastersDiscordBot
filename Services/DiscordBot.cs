@@ -52,7 +52,6 @@ namespace DiceMastersDiscordBot.Services
         private YouTubeMonitorService _youTubeService;
         private ChallongeEvent _challonge;
         private readonly StringComparer comparer;
-        private const string LOCAL_TEMP_FILE = @"d:\home\matchreport.txt";
         //private CommandService _commands;
 
 
@@ -516,9 +515,11 @@ namespace DiceMastersDiscordBot.Services
                                 }
                             }
                         }
-                        await File.WriteAllTextAsync(LOCAL_TEMP_FILE, matchReportString.ToString());
-                        await command.RespondWithFileAsync(LOCAL_TEMP_FILE, $"Report generated for {command.User.Username}");
-//                        await command.RespondAsync($"Found {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.");
+                        var tempDirectoryPath = Environment.GetEnvironmentVariable("TEMP");
+                        var filePath = Path.Combine(tempDirectoryPath, "matchreport.txt");
+                        await File.WriteAllTextAsync(filePath, matchReportString.ToString());
+                        await command.RespondWithFileAsync(filePath, $"DiceMastersTrades.txt", ephemeral: true);
+                        await command.Channel.SendMessageAsync($"Found {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.");
                     }
                     break;
                 case "offer":
