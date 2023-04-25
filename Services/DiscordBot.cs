@@ -52,6 +52,7 @@ namespace DiceMastersDiscordBot.Services
         private YouTubeMonitorService _youTubeService;
         private ChallongeEvent _challonge;
         private readonly StringComparer comparer;
+        private const string LOCAL_TEMP_FILE = @"d:\home\matchreport.txt";
         //private CommandService _commands;
 
 
@@ -515,8 +516,9 @@ namespace DiceMastersDiscordBot.Services
                                 }
                             }
                         }
-                        await command.RespondWithFileAsync(matchReportString.ToString());
-                        await command.RespondAsync($"Found {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.");
+                        await File.WriteAllTextAsync(LOCAL_TEMP_FILE, matchReportString.ToString());
+                        await command.RespondWithFileAsync(LOCAL_TEMP_FILE, $"Report generated for {command.User.Username}");
+//                        await command.RespondAsync($"Found {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.");
                     }
                     break;
                 case "offer":
