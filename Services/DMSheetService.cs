@@ -594,6 +594,11 @@ namespace DiceMastersDiscordBot.Services
                                 DiscordUsername = !string.IsNullOrEmpty(tradeSheet.DiscordUsername) ? tradeSheet.DiscordUsername : GetStringFromRecord(record, 9),
                                 Promo = GetStringFromRecord(record, 8),
                             };
+                            // If they entered their "full" discord name, with the #number, strip it off
+                            if(tradeCard.DiscordUsername.IndexOf("#") > 0)
+                            {
+                                tradeCard.DiscordUsername = tradeCard.DiscordUsername.Remove(tradeCard.DiscordUsername.IndexOf("#"));
+                            }
                             tradeInfoCards.Add(tradeCard);
                         }
                         else
@@ -632,19 +637,12 @@ namespace DiceMastersDiscordBot.Services
                 var values = sheetResponse.Values;
                 int blankRowExceptions = 0;
 
-                var sheetDiscordUser = string.Empty;
                 var comparer = StringComparer.Create(CultureInfo.CurrentCulture, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace);
               
                 foreach (var record in values)
                 {
                     try
                     {
-                        if (values.IndexOf(record) == 0)
-                        {
-                            // sheetDiscordUser = GetStringFromRecord(record, 1);
-                            sheetDiscordUser = "Andy612";
-                            continue;
-                        }
                         if (values.IndexOf(record) <= 2) continue;  // skip lines until 4
 
                         var set = GetStringFromRecord(record, 0);
@@ -674,7 +672,7 @@ namespace DiceMastersDiscordBot.Services
                                 Foil = isFoil,
                                 SellOrBuy = true,
                                 Trade = true,
-                                DiscordUsername = sheetDiscordUser,
+                                DiscordUsername = tradeSheet.DiscordUsername,
                             };
                             tradeInfoCards.Add(tradeCard);
                         }
@@ -1210,7 +1208,7 @@ namespace DiceMastersDiscordBot.Services
 
         private static string GetStringFromRecord(IList<object> record, int index)
         {
-            return (record.Count >= (index+1) && record[index] != null) ? record[index].ToString() : string.Empty;
+            return (record.Count >= (index+1) && record[index] != null) ? record[index].ToString().Trim() : string.Empty;
         }
 
         private static bool GetBooleanFromRecord(IList<object> record, int index)
