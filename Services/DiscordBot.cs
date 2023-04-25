@@ -459,6 +459,8 @@ namespace DiceMastersDiscordBot.Services
                         var usersWants = _tradeLists.Wants.Where(w => w.DiscordUsername == command.User.Username).ToList();
                         var usersHaves = _tradeLists.Haves.Where(w => w.DiscordUsername == command.User.Username).ToList();
                         StringBuilder matchReportString = new StringBuilder();
+                        var matchWants = new List<TradeInfo>();
+                        var matchHaves = new List<TradeInfo>();
                         matchReportString.AppendLine($"Trade Report for {command.User.Username}");
                         matchReportString.AppendLine("--- WANTS ---");
 
@@ -481,6 +483,7 @@ namespace DiceMastersDiscordBot.Services
                                         addHeader = false;
                                     }
                                     var matchResponse = GetTradeMatchResponse(match, "sell");
+                                    matchHaves.Add(match);
                                     matchReportString.AppendLine(matchResponse);
                                 }
                             }
@@ -507,11 +510,13 @@ namespace DiceMastersDiscordBot.Services
                                         addHeader = false;
                                     }
                                     var matchResponse = GetTradeMatchResponse(match, "buy");
+                                    matchWants.Add(match);
                                     matchReportString.AppendLine(matchResponse);
                                 }
                             }
                         }
-                        await command.RespondAsync(matchReportString.ToString());
+                        await command.RespondWithFileAsync(matchReportString.ToString());
+                        await command.RespondAsync($"Found {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchWants.Count} matchs for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.");
                     }
                     break;
                 case "offer":
