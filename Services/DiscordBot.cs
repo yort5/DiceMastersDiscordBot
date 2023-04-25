@@ -547,7 +547,7 @@ namespace DiceMastersDiscordBot.Services
                         fullReport.AppendLine("******* Report by User **********");
                         fullReport.AppendLine();
                         fullReport.AppendLine(userBasedReport.ToString());
-                        var summaryReport = $"Checking lists for {command.User.Username}:{Environment.NewLine}Found {matchWants.Count} matches for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchWants.Count} matches for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.";
+                        var summaryReport = $"Checking lists for {command.User.Username}:{Environment.NewLine}Found {matchWants.Count} matches for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchHaves.Count} matches for HAVES among {matchHaves.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.";
 
                         await File.WriteAllTextAsync(filePath, fullReport.ToString());
                         await command.RespondWithFileAsync(filePath, $"DiceMastersTrades.txt", ephemeral: true);
