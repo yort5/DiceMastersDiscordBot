@@ -21,6 +21,10 @@ namespace DiceMastersDiscordBot.Entities
             }
 
             if (setCode == "OP") setCode = "PROMO";
+            if (comparer.Equals(rarity, "bac") || comparer.Equals(rarity, "fatbac") || comparer.Equals(rarity, "basic action") || comparer.Equals(rarity, "epic basic action"))
+            {
+                rarity = "Common";
+            }
 
             var findMatchingCharacters = this.Cards.Where(c => comparer.Equals(cardName, c.CardTitle));
 
