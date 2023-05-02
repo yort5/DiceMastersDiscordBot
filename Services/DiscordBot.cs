@@ -483,7 +483,8 @@ namespace DiceMastersDiscordBot.Services
                                         matchReportString.AppendLine($"Possible matches found for {mywant.CardInfo.TeamBuilderCode}: {mywant.CardInfo.RarityAbbreviation} {mywant.CardInfo.CardTitle}");
                                         addHeader = false;
                                     }
-                                    var matchResponse = $"   **{match.DiscordUsername}** has {GetTradeMatchResponseTag(match, "sell")}";
+                                    var promoTagString = string.IsNullOrEmpty(match.Promo) ? string.Empty : $" : {match.Promo}";
+                                    var matchResponse = $"   **{match.DiscordUsername}** has {GetTradeMatchResponseTag(match, "sell")}{promoTagString}";
                                     matchHaves.Add(match);
                                     matchReportString.AppendLine(matchResponse);
                                 }
@@ -510,7 +511,8 @@ namespace DiceMastersDiscordBot.Services
                                         matchReportString.AppendLine($"Possible matches found for {myhave.CardInfo.TeamBuilderCode}: {myhave.CardInfo.RarityAbbreviation} {myhave.CardInfo.CardTitle}");
                                         addHeader = false;
                                     }
-                                    var matchResponse = $"   **{match.DiscordUsername}** has {GetTradeMatchResponseTag(match, "buy")}";
+                                    var promoTagString = string.IsNullOrEmpty(match.Promo) ? string.Empty : $" : {match.Promo}";
+                                    var matchResponse = $"   **{match.DiscordUsername}** has {GetTradeMatchResponseTag(match, "buy")}{promoTagString}";
                                     matchWants.Add(match);
                                     matchReportString.AppendLine(matchResponse);
                                 }
@@ -525,12 +527,14 @@ namespace DiceMastersDiscordBot.Services
                             userBasedReport.AppendLine("They WANT");
                             foreach(var userWant in matchWants.Where(h => h.DiscordUsername == user.DiscordUsername))
                             {
-                                userBasedReport.AppendLine($"{userWant.CardInfo.TeamBuilderCode}: {userWant.CardInfo.RarityAbbreviation} {userWant.CardInfo.CardTitle} - {GetTradeMatchResponseTag(userWant, "buy")}");
+                                var promoTagString = string.IsNullOrEmpty(userWant.Promo) ? string.Empty : $" : {userWant.Promo}";
+                                userBasedReport.AppendLine($"{userWant.CardInfo.TeamBuilderCode}: {userWant.CardInfo.RarityAbbreviation} {userWant.CardInfo.CardTitle} - {GetTradeMatchResponseTag(userWant, "buy")}{promoTagString}");
                             }
                             userBasedReport.AppendLine($"They HAVE");
                             foreach (var userHave in matchHaves.Where(h => h.DiscordUsername == user.DiscordUsername))
                             {
-                                userBasedReport.AppendLine($"{userHave.CardInfo.TeamBuilderCode}: {userHave.CardInfo.RarityAbbreviation} {userHave.CardInfo.CardTitle} - {GetTradeMatchResponseTag(userHave, "sell")}");
+                                var promoTagString = string.IsNullOrEmpty(userHave.Promo) ? string.Empty : $" : {userHave.Promo}";
+                                userBasedReport.AppendLine($"{userHave.CardInfo.TeamBuilderCode}: {userHave.CardInfo.RarityAbbreviation} {userHave.CardInfo.CardTitle} - {GetTradeMatchResponseTag(userHave, "sell")}{promoTagString}");
                             }
                             userBasedReport.AppendLine();
                             userBasedReport.AppendLine(" --------------------- "); 
@@ -550,8 +554,8 @@ namespace DiceMastersDiscordBot.Services
                         var summaryReport = $"Checking lists for {command.User.Username}:{Environment.NewLine}Found {matchWants.Count} matches for WANTS among {matchWants.Select(u => u.DiscordUsername).Distinct().ToList().Count} people and {matchHaves.Count} matches for HAVES among {matchHaves.Select(u => u.DiscordUsername).Distinct().ToList().Count} people.";
 
                         await File.WriteAllTextAsync(filePath, fullReport.ToString());
-                        await command.RespondWithFileAsync(filePath, $"DiceMastersTrades.txt", ephemeral: true);
-                        await command.Channel.SendMessageAsync(summaryReport);
+                        await command.User.SendFileAsync(filePath, $"DiceMastersTrades.txt");
+                        await command.RespondAsync(summaryReport);
                     }
                     break;
                 case "offer":
@@ -572,6 +576,7 @@ namespace DiceMastersDiscordBot.Services
                     {
                         await command.RespondAsync($"{command.User.Username} triggered refresh of trade sheets (may take a few minutes)");
                         await LoadTradeLists();
+                        await command.User.SendMessageAsync($"Detected {_tradeLists.Haves.Where(h => comparer.Equals(h.DiscordUsername, command.User.Username)).ToList().Count} HAVES in your sheet and {_tradeLists.Wants.Where(w => comparer.Equals(w.DiscordUsername, command.User.Username)).ToList().Count} WANTS.");
                     }
                     break;
             }
