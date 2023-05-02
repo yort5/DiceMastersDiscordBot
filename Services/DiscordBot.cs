@@ -206,7 +206,13 @@ namespace DiceMastersDiscordBot.Services
                     .WithName("offer")
                     .WithDescription("Off up a card to list for sale or trade or that you want to buy or trade for.")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                ).AddOption(new SlashCommandOptionBuilder()
+                )
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("addsheet")
+                    .WithDescription("Add your sheet to the Master List.")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                )
+                .AddOption(new SlashCommandOptionBuilder()
                     .WithName("refresh")
                     .WithDescription("Manually triggers the bot to refresh the trade lists (rather than wait until tomorrow).")
                     .WithType(ApplicationCommandOptionType.SubCommand)
@@ -572,6 +578,16 @@ namespace DiceMastersDiscordBot.Services
                         await command.RespondWithModalAsync(mb.Build());
                     }
                     break;
+                case "addsheet":
+                    {
+                        var mb = new ModalBuilder()
+                          .WithTitle("Add your Google Trade Sheet to the bot")
+                          .WithCustomId("add_sheet")
+                          .AddTextInput("Link to your Google Sheet", "sheet_link", placeholder: "https://docs.google.com/spreadsheets/d/somerandomcharacters", required: true)
+                          .AddTextInput("What country are you in (for shipping)", "sheet_country", placeholder: "USA", required: true);
+                        await command.RespondWithModalAsync(mb.Build());
+                    }
+                    break;
                 case "refresh":
                     {
                         await command.RespondAsync($"{command.User.Username} triggered refresh of trade sheets (may take a few minutes)");
@@ -704,6 +720,9 @@ namespace DiceMastersDiscordBot.Services
                 case "team_submit":
                     await HandleTeamSubmitModalResponseAsync(modal);
                     break;
+                case "add_sheet":
+                    await HandleAddSheetModalResponseAsync(modal);
+                    break;
                 case "card_offer":
                     await HandleCardOfferModalResponseAsync(modal);
                     break;
@@ -729,7 +748,38 @@ namespace DiceMastersDiscordBot.Services
             await modal.RespondAsync(response);
             await modal.User.SendMessageAsync($"The following team was successfully submitted for {eventUserInput.EventName}{Environment.NewLine}{eventUserInput.TeamLink}");
         }
-        
+
+        private async Task HandleAddSheetModalResponseAsync(SocketModal modal)
+        {
+            try
+            {
+                List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
+                string sheetLink = modalComponents.First(x => x.CustomId == "sheet_link").Value;
+                string country = modalComponents.First(x => x.CustomId == "sheet_country").Value;
+
+                TradeSheet addTradeSheet = new TradeSheet
+                {
+                    Name = modal.User.Username,
+                    DiscordUsername = modal.User.Username,
+                    GeoLocation = country,
+                    SheetId= sheetLink,
+                    LastUpdate= DateTime.UtcNow.ToString("d"),
+                    IncludeInBot = true,
+                };
+
+                _sheetService.UpdateTradeSheets(addTradeSheet);
+                await modal.RespondAsync("Thank you, added! (Also kicking off a refresh operation, could take a few minutes)");
+                await LoadTradeLists();
+                await modal.User.SendMessageAsync($"Detected {_tradeLists.Haves.Where(h => comparer.Equals(h.DiscordUsername, modal.User.Username)).ToList().Count} HAVES in your sheet and {_tradeLists.Wants.Where(w => comparer.Equals(w.DiscordUsername, modal.User.Username)).ToList().Count} WANTS.");
+
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError($"Exception trying to add card offer: {exc.Message}");
+                await modal.RespondAsync("Sorry, there was an issue with your submission.");
+            }
+
+        }
         private async Task HandleCardOfferModalResponseAsync(SocketModal modal)
         {
             try

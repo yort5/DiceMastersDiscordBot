@@ -32,6 +32,7 @@ namespace DiceMastersDiscordBot.Services
         private const string MasterYouTubeSheetName = "YouTubeSubs";
         private const string MasterRSSFeedSheetName = "RSSFeeds";
         private const string DROPPED = "DROPPED";
+        private const string TradingSheetListName = "TradeSheets";
         private const string TradingHaveSheetName = "Trading - Haves";
         private const string TradingWantSheetName = "Trading - Wants";
         private const int TRADESHEETTHRESHHOLD = 100;
@@ -698,7 +699,63 @@ namespace DiceMastersDiscordBot.Services
             return tradeInfoCards;
         }
 
+        internal bool UpdateTradeSheets(TradeSheet addTradeSheet)
+        {
+            try
+            {
+                var communitySheetId = _settings.GetCommunitySheetId();
+                var range = $"{TradingSheetListName}!A:J";
 
+                // first check to see if this person already has a submission
+                var findExistingRequest = _sheetService.Spreadsheets.Values.Get(communitySheetId, range);
+                var existingCardRecords = findExistingRequest.Execute();
+                bool existingEntryFound = false;
+                foreach (var record in existingCardRecords.Values)
+                {
+                    if (record.Count >= 2 && record[1].ToString().Equals(addTradeSheet.DiscordUsername, StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        var index = existingCardRecords.Values.IndexOf(record);
+                        range = $"{TradingSheetListName}!A{index + 1}:J";
+                        existingEntryFound = true;
+                        break;
+                    }
+                }
+
+                var oblist = new List<object>()
+                {
+                    addTradeSheet.Name,
+                    addTradeSheet.DiscordUsername,
+                    addTradeSheet.GeoLocation,
+                    addTradeSheet.SheetId,
+                    addTradeSheet.LastUpdate,
+                    addTradeSheet.IncludeInBot,
+                };
+                var valueRange = new ValueRange();
+                valueRange.Values = new List<IList<object>> { oblist };
+
+                if (existingEntryFound)
+                {
+                    // Performing Update Operation...
+                    var updateRequest = _sheetService.Spreadsheets.Values.Update(valueRange, communitySheetId, range);
+                    updateRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+                    var appendReponse = updateRequest.Execute();
+                    return true;
+                }
+                else
+                {
+                    // Append the above record...
+                    var appendRequest = _sheetService.Spreadsheets.Values.Append(valueRange, communitySheetId, range);
+                    appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
+                    var appendReponse = appendRequest.Execute();
+                    return true;
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine(exc.Message);
+                return false;
+            }
+        }
         internal bool UpdateTradeInfoCard(TradeInfo cardTradeInfo, bool isHave)
         {
             try
