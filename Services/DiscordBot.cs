@@ -280,7 +280,7 @@ namespace DiceMastersDiscordBot.Services
 
                 var teamBuilderId = $"{letters}{digits.PadLeft(3, '0')}";
 
-                var communityCardInfo = _communityInfo.Cards.Where(c => c.TeamBuilderCode.ToLower() == teamBuilderId.ToLower()).FirstOrDefault();
+                var communityCardInfo = _communityInfo.Cards.Where(c => comparer.Equals(c.TeamBuilderCode, teamBuilderId)).FirstOrDefault();
                 var quickanddirty = $"http://dicecoalition.com/cardservice/Image.php?set={letters}&cardnum={digits.TrimStart('0')}";
 
                 if (!imageOnly || communityCardInfo != null)
@@ -463,8 +463,8 @@ namespace DiceMastersDiscordBot.Services
                     break;
                 case "check":
                     {
-                        var usersWants = _tradeLists.Wants.Where(w => w.DiscordUsername == command.User.Username).ToList();
-                        var usersHaves = _tradeLists.Haves.Where(w => w.DiscordUsername == command.User.Username).ToList();
+                        var usersWants = _tradeLists.Wants.Where(w => comparer.Equals(w.DiscordUsername, command.User.Username)).ToList();
+                        var usersHaves = _tradeLists.Haves.Where(w => comparer.Equals(w.DiscordUsername, command.User.Username)).ToList();
                         StringBuilder matchReportString = new StringBuilder();
                         var matchWants = new List<TradeInfo>();
                         var matchHaves = new List<TradeInfo>();
@@ -474,7 +474,7 @@ namespace DiceMastersDiscordBot.Services
                         foreach (var mywant in usersWants)
                         {
                             var matches = _tradeLists.Haves.Where(h => h.CardInfo.TeamBuilderCode == mywant.CardInfo.TeamBuilderCode 
-                                                                && h.DiscordUsername != mywant.DiscordUsername
+                                                                && !comparer.Equals(h.DiscordUsername, mywant.DiscordUsername)
                                                                 ).ToList();
                             if(matches.Any())
                             {
@@ -502,7 +502,7 @@ namespace DiceMastersDiscordBot.Services
                         foreach (var myhave in usersHaves)
                         {
                             var matches = _tradeLists.Wants.Where(h => h.CardInfo.TeamBuilderCode == myhave.CardInfo.TeamBuilderCode
-                                                                && h.DiscordUsername != myhave.DiscordUsername
+                                                                && !comparer.Equals(h.DiscordUsername, myhave.DiscordUsername)
                                                                 ).ToList();
                             if (matches.Any())
                             {
@@ -531,13 +531,13 @@ namespace DiceMastersDiscordBot.Services
                         {
                             userBasedReport.AppendLine($"Matches for User {user.DiscordUsername}");
                             userBasedReport.AppendLine("They WANT");
-                            foreach(var userWant in matchWants.Where(h => h.DiscordUsername == user.DiscordUsername))
+                            foreach(var userWant in matchWants.Where(h => comparer.Equals(h.DiscordUsername, user.DiscordUsername)))
                             {
                                 var promoTagString = string.IsNullOrEmpty(userWant.Promo) ? string.Empty : $" : {userWant.Promo}";
                                 userBasedReport.AppendLine($"{userWant.CardInfo.TeamBuilderCode}: {userWant.CardInfo.RarityAbbreviation} {userWant.CardInfo.CardTitle} - {GetTradeMatchResponseTag(userWant, "buy")}{promoTagString}");
                             }
                             userBasedReport.AppendLine($"They HAVE");
-                            foreach (var userHave in matchHaves.Where(h => h.DiscordUsername == user.DiscordUsername))
+                            foreach (var userHave in matchHaves.Where(h => comparer.Equals(h.DiscordUsername, user.DiscordUsername)))
                             {
                                 var promoTagString = string.IsNullOrEmpty(userHave.Promo) ? string.Empty : $" : {userHave.Promo}";
                                 userBasedReport.AppendLine($"{userHave.CardInfo.TeamBuilderCode}: {userHave.CardInfo.RarityAbbreviation} {userHave.CardInfo.CardTitle} - {GetTradeMatchResponseTag(userHave, "sell")}{promoTagString}");
