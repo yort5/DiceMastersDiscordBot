@@ -164,6 +164,11 @@ namespace DiceMastersDiscordBot.Services
                 .WithDescription("Submit a team for an event.");
             await RegisterCommand(submitCommand);
 
+            var registerCommand = new SlashCommandBuilder()
+                .WithName("register")
+                .WithDescription("Register for an event (submitting a team is optional).");
+            await RegisterCommand(submitCommand);
+
             var listCommand = new SlashCommandBuilder()
                 .WithName("list")
                 .WithDescription("List the players registered for an event.");
@@ -172,7 +177,7 @@ namespace DiceMastersDiscordBot.Services
             var teamListCommand = new SlashCommandBuilder()
                 .WithName("teams")
                 .WithDescription("List the teams of players registered for an event.");
-            // await RegisterCommand(teamListCommand);
+            await RegisterCommand(teamListCommand);
 
             var tradeCommand = new SlashCommandBuilder()
                 .WithName("trade")
@@ -257,10 +262,14 @@ namespace DiceMastersDiscordBot.Services
                     await HandleReportCommandAsync(command);
                     break;
                 case "submit":
+                case "register":
                     await HandleSubmitCommandAsync(command);
                     break;
                 case "list":
                     await HandleListPlayersCommandAsync(command);
+                    break;
+                case "teams":
+                    await HandleListTeamsCommandAsync(command);
                     break;
                 case "trade":
                     await HandleTradeCommandAsync(command);
@@ -376,6 +385,62 @@ namespace DiceMastersDiscordBot.Services
             {
                 _logger.LogError($"Exception trying to get tournament list from Challonge: {exc.Message}");
                 await command.RespondAsync("Sorry, there was an issue getting the player list from Challonge.");
+            }
+        }
+
+        private async Task HandleListTeamsCommandAsync(SocketSlashCommand command)
+        {
+            try
+            {
+                var dmEvent = _eventFactory.GetDiceMastersEvent(command.Channel.Name, _currentEventList);
+                var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == command.Channel.Name);
+
+                // check TO list
+                foreach (var authTo in dmManifest.EventOrganizerIDList)
+                {
+                    // simple check
+                    if (command.User.Id.ToString() == authTo)
+                    {
+                        var teamList = dmEvent.GetTeamLists();
+                        if (teamList.Any())
+                        {
+                            var cardEmbed = new EmbedBuilder
+                            {
+                                Title = $"Here are the Teams for {dmManifest.EventName}"
+                            };
+
+                            foreach (var team in teamList.OrderBy(t => t.DiscordName))
+                            {
+                                var nameIndex = team.TeamLink.IndexOf("&name=");
+                                if(nameIndex > 0)
+                                {
+                                    var teamName = team.TeamLink.Substring(nameIndex+ 6);
+                                    teamName = teamName.Replace("%20", " ");
+                                    cardEmbed.AddField(team.DiscordName, $"[{teamName}]({team.TeamLink})");
+                                }
+                                else
+                                {
+                                    cardEmbed.AddField(team.DiscordName, team.TeamLink);
+                                }
+                            }
+                            await command.RespondAsync(embed: cardEmbed.Build());
+                            return;
+                        }
+                        else
+                        {
+                            await command.RespondAsync("Sorry, did not find any teams for this event.");
+                            return;
+                        }
+                    }
+                }
+
+                // no authorized TO found
+                await command.RespondAsync("Sorry, you are not authorized to list teams for this event.", ephemeral: true);
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError($"Exception trying to get team list: {exc.Message}");
+                await command.RespondAsync("Sorry, there was an issue getting the teams for this event.");
             }
         }
 

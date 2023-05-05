@@ -1028,7 +1028,7 @@ namespace DiceMastersDiscordBot.Services
                             TeamLink = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty,
                             Misc = (record.Count >= 4 && record[3] != null) ? record[3].ToString() : string.Empty
                         };
-                        if (!teamEntry.Here.ToUpper().StartsWith(DROPPED.ToUpper()))
+                        if (!teamEntry.Here.ToUpper().StartsWith(DROPPED.ToUpper()) && teamEntry.DiscordName != "Discord Name")
                         {
                             teamLists.Add(teamEntry);
                         }
