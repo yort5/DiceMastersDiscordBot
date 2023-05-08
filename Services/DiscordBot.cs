@@ -333,11 +333,18 @@ namespace DiceMastersDiscordBot.Services
 
         private async Task HandleSubmitCommandAsync(SocketSlashCommand command)
         {
-            var mb = new ModalBuilder()
-                .WithTitle("Submit Team")
-                .WithCustomId("team_submit")
-                .AddTextInput("The TeamBuilder link for your team.", "team_link", placeholder: "http://tb.dicecoalition.com/");
-
+            var mb = new ModalBuilder().WithTitle("Submit Team");
+            if (comparer.Equals(command.Channel.Name, "two-team-takedown") )
+            {
+                mb.CustomId = "tttd_submit";
+                mb.AddTextInput("The TeamBuilder link for Team A.", "team_A", placeholder: "http://tb.dicecoalition.com/");
+                mb.AddTextInput("The TeamBuilder link for Team B.", "team_B", placeholder: "http://tb.dicecoalition.com/");
+            }
+            else
+            {
+                mb.CustomId = "team_submit";
+                mb.AddTextInput("The TeamBuilder link for your team.", "team_link", placeholder: "http://tb.dicecoalition.com/");
+            }
             await command.RespondWithModalAsync(mb.Build());
         }
 
@@ -785,6 +792,9 @@ namespace DiceMastersDiscordBot.Services
                 case "team_submit":
                     await HandleTeamSubmitModalResponseAsync(modal);
                     break;
+                case "tttd_submit":
+                    await HandleTTTDTeamSubmitModalResponseAsync(modal);
+                    break;
                 case "add_sheet":
                     await HandleAddSheetModalResponseAsync(modal);
                     break;
@@ -806,6 +816,28 @@ namespace DiceMastersDiscordBot.Services
             string response = string.Empty;
 
             eventUserInput.TeamLink = teamLink;
+
+            var dmEvent = _eventFactory.GetDiceMastersEvent(eventUserInput.EventName, _currentEventList);
+            response = dmEvent.SubmitTeamLink(eventUserInput);
+
+            await modal.RespondAsync(response);
+            await modal.User.SendMessageAsync($"The following team was successfully submitted for {eventUserInput.EventName}{Environment.NewLine}{eventUserInput.TeamLink}");
+        }
+
+        private async Task HandleTTTDTeamSubmitModalResponseAsync(SocketModal modal)
+        {
+            List<SocketMessageComponentData> modalComponents = modal.Data.Components.ToList();
+            string teamA = modalComponents.First(x => x.CustomId == "team_A").Value;
+            string teamB = modalComponents.First(x => x.CustomId == "team_B").Value;
+
+            EventUserInput eventUserInput = new EventUserInput();
+            eventUserInput.Here = DateTime.UtcNow.ToString();
+            eventUserInput.EventName = modal.Channel.Name;
+            eventUserInput.DiscordName = modal.User.Username;
+            string response = string.Empty;
+
+            eventUserInput.TeamLink = teamA;
+            eventUserInput.Misc = teamB;
 
             var dmEvent = _eventFactory.GetDiceMastersEvent(eventUserInput.EventName, _currentEventList);
             response = dmEvent.SubmitTeamLink(eventUserInput);
