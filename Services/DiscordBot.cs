@@ -435,6 +435,22 @@ namespace DiceMastersDiscordBot.Services
                         {
                             cardEmbed.AddField(team.DiscordName, team.TeamLink);
                         }
+                        if (userTeam != null)
+                        {
+                            var cardsOnTeam = ParseTeamList(team);
+                            var globalStringBuilder = new StringBuilder();
+                            foreach (var card in cardsOnTeam)
+                            {
+                                if (!string.IsNullOrEmpty(card.Global))
+                                {
+                                    globalStringBuilder.AppendLine($"({card.FullCardInfo.CardTitle}) {card.Global}");
+                                }
+                            }
+                            if (globalStringBuilder.Length > 0)
+                            {
+                                cardEmbed.AddField("Globals", globalStringBuilder.ToString());
+                            }
+                        }
                     }
                     await command.RespondAsync(embed: cardEmbed.Build());
                     return;
