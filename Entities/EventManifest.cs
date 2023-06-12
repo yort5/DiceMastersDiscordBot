@@ -9,7 +9,8 @@ namespace DiceMastersDiscordBot.Entities
         public string EventName;
         public string EventSheetId;
         public string EventCode;
-        public List<string> EventOrganizerIDList = new List<string>();
+        public DateTime EventStartTime;
+        public List<ulong> EventOrganizerIDList = new List<ulong>();
         public string ChallongeTournamentName;
         public ulong ScoreKeeperChannelId;
     }

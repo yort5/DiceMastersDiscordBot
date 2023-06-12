@@ -19,7 +19,7 @@ namespace DiceMastersDiscordBot.Events
 
         public override void Initialize(EventManifest manifest)
         {
-            string weeklyEventName = "Event Not Found";
+            // no-op
         }
 
         public override string GetFormat(int numberEvents)

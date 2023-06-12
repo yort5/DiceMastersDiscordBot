@@ -176,7 +176,8 @@ namespace DiceMastersDiscordBot.Services
 
             var teamListCommand = new SlashCommandBuilder()
                 .WithName("teams")
-                .WithDescription("List the teams of players registered for an event.");
+                .WithDescription("List the teams of players registered for an event.")
+                .AddOption("user", ApplicationCommandOptionType.User, "Discord name of user to get the team for", isRequired: false);
             await RegisterCommand(teamListCommand);
 
             var tradeCommand = new SlashCommandBuilder()
@@ -401,48 +402,48 @@ namespace DiceMastersDiscordBot.Services
             {
                 var dmEvent = _eventFactory.GetDiceMastersEvent(command.Channel.Name, _currentEventList);
                 var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == command.Channel.Name);
+                SocketGuildUser userTeam = command.Data.Options.Any() ? (SocketGuildUser)command.Data.Options.First().Value : null;
 
-                // check TO list
-                foreach (var authTo in dmManifest.EventOrganizerIDList)
+                var teamList = dmEvent.GetTeamLists(command.User.Id);
+
+                var embedTitle = $"Here are the Teams for {dmManifest.EventName}";
+                if (userTeam != null)
                 {
-                    // simple check
-                    if (command.User.Id.ToString() == authTo)
-                    {
-                        var teamList = dmEvent.GetTeamLists();
-                        if (teamList.Any())
-                        {
-                            var cardEmbed = new EmbedBuilder
-                            {
-                                Title = $"Here are the Teams for {dmManifest.EventName}"
-                            };
+                    // a specific user's team was asked for
+                    teamList = teamList.Where(t => t.DiscordName == userTeam.Username).ToList();
+                    embedTitle = "Here is the team for the User you requested";
+                }
 
-                            foreach (var team in teamList.OrderBy(t => t.DiscordName))
-                            {
-                                var nameIndex = team.TeamLink.IndexOf("&name=");
-                                if(nameIndex > 0)
-                                {
-                                    var teamName = team.TeamLink.Substring(nameIndex+ 6);
-                                    teamName = teamName.Replace("%20", " ");
-                                    cardEmbed.AddField(team.DiscordName, $"[{teamName}]({team.TeamLink})");
-                                }
-                                else
-                                {
-                                    cardEmbed.AddField(team.DiscordName, team.TeamLink);
-                                }
-                            }
-                            await command.RespondAsync(embed: cardEmbed.Build());
-                            return;
+                if (teamList.Any())
+                {
+                    var cardEmbed = new EmbedBuilder
+                    {
+                        Title = embedTitle
+                    };
+                    
+
+                    foreach (var team in teamList.OrderBy(t => t.DiscordName))
+                    {
+                        var nameIndex = team.TeamLink.IndexOf("&name=");
+                        if (nameIndex > 0)
+                        {
+                            var teamName = team.TeamLink.Substring(nameIndex + 6);
+                            teamName = teamName.Replace("%20", " ");
+                            cardEmbed.AddField(team.DiscordName, $"[{teamName}]({team.TeamLink})");
                         }
                         else
                         {
-                            await command.RespondAsync("Sorry, did not find any teams for this event.");
-                            return;
+                            cardEmbed.AddField(team.DiscordName, team.TeamLink);
                         }
                     }
+                    await command.RespondAsync(embed: cardEmbed.Build());
+                    return;
                 }
-
-                // no authorized TO found
-                await command.RespondAsync("Sorry, you are not authorized to list teams for this event.", ephemeral: true);
+                else
+                {
+                    await command.RespondAsync("Sorry, did not find any teams for this event. Either there aren't any or you're not authorized to view them yet.");
+                    return;
+                }
             }
             catch (Exception exc)
             {
@@ -764,9 +765,7 @@ namespace DiceMastersDiscordBot.Services
 
                         foreach (var toId in dmManifest.EventOrganizerIDList)
                         {
-                            ulong toDiscordUserId;
-                            ulong.TryParse(toId, out toDiscordUserId);
-                            var toDiscordUser = _client.GetUser(toDiscordUserId);
+                            var toDiscordUser = _client.GetUser(toId);
                             await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{genericReportString}");
                         }
                         if (scoreChannel != null)
@@ -1294,9 +1293,7 @@ namespace DiceMastersDiscordBot.Services
 
                             foreach (var toId in dmManifest.EventOrganizerIDList)
                             {
-                                ulong toDiscordUserId;
-                                ulong.TryParse(toId, out toDiscordUserId);
-                                var toDiscordUser = _client.GetUser(toDiscordUserId);
+                                var toDiscordUser = _client.GetUser(toId);
                                 await toDiscordUser.SendMessageAsync($"Reporting last match results for Round {roundString}:{Environment.NewLine}{message.Content}");
                             }
                             if (scoreChannel != null)
@@ -1531,9 +1528,9 @@ namespace DiceMastersDiscordBot.Services
             foreach (var authTo in dmManifest.EventOrganizerIDList)
             {
                 // simple check
-                if (message.Author.Id.ToString() == authTo)
+                if (message.Author.Id == authTo)
                 {
-                    var teamList = dmEvent.GetTeamLists();
+                    var teamList = dmEvent.GetTeamLists(message.Author.Id);
                     int count = 0;
                     if (teamList.Any())
                     {
@@ -1569,10 +1566,10 @@ namespace DiceMastersDiscordBot.Services
             var dmManifest = _currentEventList.FirstOrDefault(e => e.EventName == message.Channel.Name);
 
             // check TO list
-            var authorized = dmManifest.EventOrganizerIDList.Where(to => to == message.Author.Id.ToString());
+            var authorized = dmManifest.EventOrganizerIDList.Where(to => to == message.Author.Id);
             if (authorized.Any())
             {
-                var teamList = dmEvent.GetTeamLists();
+                var teamList = dmEvent.GetTeamLists(message.Author.Id);
                 if (teamList.Any())
                 {
                     foreach (var team in teamList)
@@ -1661,9 +1658,7 @@ namespace DiceMastersDiscordBot.Services
             string fellowshipString = $"FELLOWSHIP {dmManifest.EventName}:{Environment.NewLine}User {message.Author.Username} votes for {message.Content.TrimStart(".fellowship".ToCharArray())}";
             foreach (var toId in dmManifest.EventOrganizerIDList)
             {
-                ulong toDiscordUserId;
-                ulong.TryParse(toId, out toDiscordUserId);
-                var toDiscordUser = _client.GetUser(toDiscordUserId);
+                var toDiscordUser = _client.GetUser(toId);
                 await toDiscordUser.SendMessageAsync(fellowshipString);
             }
             await message.Channel.SendMessageAsync($"Thank you, {message.Author.Username}, your fellowship vote was sent!");
@@ -1843,6 +1838,20 @@ namespace DiceMastersDiscordBot.Services
         private async Task LoadCommunityInfo()
         {
             _communityInfo = await _sheetService.LoadCommunityInfo();
+        }
+
+        private async void LoadKeywords()
+        {
+            var markdownConverter = new Html2Markdown.Converter();
+
+            try
+            {
+                Console.WriteLine("Not yet implemented");
+            }
+            catch (Exception exc)
+            {
+                _logger.LogError($"Exception attempting to read an RSS feed: {exc.Message}");
+            }
         }
 
         private List<CardInfo> ParseTeamList(EventUserInput team)

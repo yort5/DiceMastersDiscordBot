@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using DiceMastersDiscordBot.Entities;
@@ -23,6 +24,10 @@ namespace DiceMastersDiscordBot.Events
         {
             string weeklyEventName = GetNextEventName();
             _homeSheet = _sheetService.GetHomeSheet(manifest.EventSheetId, weeklyEventName);
+
+            _channelCode = manifest.EventCode;
+            _eventOrganizerDiscordIds = manifest.EventOrganizerIDList ?? new List<ulong>();
+            _eventStartTime = manifest.EventStartTime != DateTime.MinValue ? manifest.EventStartTime : DateTime.MaxValue;
         }
 
         private string GetNextEventName()

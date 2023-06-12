@@ -36,7 +36,8 @@ namespace DiceMastersDiscordBot.Events
         protected HomeSheet _homeSheet = new HomeSheet();
         protected bool _useChallonge = false;
         protected string _channelCode;
-        protected List<string> _eventOrganizerDiscordIds;
+        protected List<ulong> _eventOrganizerDiscordIds;
+        protected DateTime _eventStartTime = DateTime.MaxValue;
 
         public BaseDiceMastersEvent(ILoggerFactory loggerFactory,
                             IAppSettings appSettings,
@@ -59,7 +60,8 @@ namespace DiceMastersDiscordBot.Events
         {
             _homeSheet = _sheetService.GetHomeSheet(manifest.EventSheetId, manifest.EventName);
             _channelCode = manifest.EventCode;
-            _eventOrganizerDiscordIds = manifest.EventOrganizerIDList;
+            _eventOrganizerDiscordIds = manifest.EventOrganizerIDList ?? new List<ulong>();
+            _eventStartTime = manifest.EventStartTime != DateTime.MinValue ? manifest.EventStartTime : DateTime.MaxValue;
         }
 
         public virtual string GetFormat(int numberEvents)
@@ -137,9 +139,17 @@ namespace DiceMastersDiscordBot.Events
             return _sheetService.SendLinkToGoogle(_homeSheet.SheetId, _homeSheet.SheetName, eventUserInput);
         }
 
-        public virtual List<EventUserInput> GetTeamLists()
+        public virtual List<EventUserInput> GetTeamLists(ulong userId)
         {
-            return _sheetService.GetTeams(_homeSheet);
+            if( _eventOrganizerDiscordIds.Contains(userId)
+                || _eventStartTime < DateTime.UtcNow)
+            {
+                return _sheetService.GetTeams(_homeSheet);
+            }
+            else
+            {
+                return new List<EventUserInput>();
+            }
         }
     }
 }

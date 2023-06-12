@@ -140,7 +140,7 @@ namespace DiceMastersDiscordBot.Services
             try
             {
                 // Define request parameters.
-                var range = $"DiscordEventSheet!A:F";
+                var range = $"DiscordEventSheet!A:G";
 
                 // load the data
                 var sheetRequest = _sheetService.Spreadsheets.Values.Get(_settings.GetMasterSheetId(), range);
@@ -159,18 +159,17 @@ namespace DiceMastersDiscordBot.Services
                             EventCode = (record.Count >= 3 && record[2] != null) ? record[2].ToString() : string.Empty,
                             ChallongeTournamentName = (record.Count >= 5 && record[4] != null) ? record[4].ToString() : string.Empty,
                         };
-                        if (record.Count >= 4 && record[3] != null)
-                        {
-                            // probably a slicker way to do this but there's no time!
-                            var idList = record[3].ToString().Split(',').ToList();
-                            foreach (var id in idList)
-                            {
-                                eventManifest.EventOrganizerIDList.Add(id.Trim());
-                            }
-                        }
+                        if (eventManifest.EventName == "Channel Name") continue;  // this is the header row
+
+                        eventManifest.EventOrganizerIDList = ParseIdsGetUlongsFromRecord(record, 3);
+
                         if (record.Count >= 6 && record[5] != null)
                         {
                             ulong.TryParse(record[5].ToString(), out eventManifest.ScoreKeeperChannelId);
+                        }
+                        if (record.Count >= 7 && record[6] != null)
+                        {
+                            DateTime.TryParse(record[6].ToString(), out eventManifest.EventStartTime);
                         }
                         currentEvents.Add(eventManifest);
                     }
@@ -1273,6 +1272,21 @@ namespace DiceMastersDiscordBot.Services
             var stringValue = (record.Count >= (index + 1) && record[index] != null) ? record[index].ToString() : string.Empty;
             Boolean.TryParse(stringValue, out bool isTrue);
             return isTrue;
+        }
+
+        private List<ulong> ParseIdsGetUlongsFromRecord(IList<object> record, int index)
+        {
+            var stringValue = (record.Count >= (index + 1) && record[index] != null) ? record[index].ToString() : string.Empty;
+            List<ulong> ids = new List<ulong>();
+            if (!string.IsNullOrEmpty(stringValue))
+            {
+                foreach (var ulongString in stringValue.Split(','))
+                {
+                    ulong.TryParse(ulongString, out ulong ulongId);
+                    ids.Add(ulongId);
+                }
+            }
+            return ids;
         }
         #endregion
     }
