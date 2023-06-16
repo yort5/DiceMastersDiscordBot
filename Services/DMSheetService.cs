@@ -503,7 +503,7 @@ namespace DiceMastersDiscordBot.Services
                         tradeList.Wants.AddRange(tradeWants);
                     }
                 });
-                await Task.Delay(TimeSpan.FromSeconds(1));  // take a little break between sheets so we don't overwhelm our Google API limits
+                await Task.Delay(TimeSpan.FromSeconds(10));  // take a little break between sheets so we don't overwhelm our Google API limits
             }
             return tradeList;
         }
