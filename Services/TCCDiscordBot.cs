@@ -19,6 +19,7 @@ using DiceMastersDiscordBot.Entities;
 using System.Net;
 using System.Web;
 using Newtonsoft.Json;
+using PuppeteerSharp;
 
 namespace DiceMastersDiscordBot.Services
 {
@@ -28,6 +29,7 @@ namespace DiceMastersDiscordBot.Services
         private readonly IAppSettings _settings;
         private readonly IHostEnvironment _environment;
         private readonly HttpClient _tccValueHttpClient;
+        private readonly HttpClient _ltnHttpClient;
         private Random _random;
         private DateTime _relientKLastMentioned = DateTime.MinValue;
 
@@ -46,6 +48,7 @@ namespace DiceMastersDiscordBot.Services
             _settings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _tccValueHttpClient = httpClientFactory.CreateClient("TCC");
+            _ltnHttpClient = httpClientFactory.CreateClient("LTN");
             _sheetService = gSheetService;
 
             _random = new Random();
@@ -78,27 +81,38 @@ namespace DiceMastersDiscordBot.Services
                 await _client.StartAsync();
 
                 // give the service a chance to start before moving on to computational things
-                await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
 
                 var lastUpdatedTicks = DateTime.MinValue.ToUniversalTime().Ticks;
+                var testLtnChannel = _client.GetChannel(_settings.GetLtnChannelId()) as IMessageChannel;
+
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     _logger.LogInformation("DiscordBot is doing background work.");
 
                     // Doing the delay first, as the Guild data isn't populated yet if we do it right away.
-                    await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                    int tccIteration = 0;
                     try
                     {
-                        var tccCurrent = await TCCGetCrime();
-                        var crimePrice = tccCurrent.data.SRLY.First().quote.USD.price * 3.244;
-                        foreach (var guild in _client.Guilds)
+                        tccIteration++;
+                        if(tccIteration == 10)
                         {
-                            var user = guild.GetUser(_client.CurrentUser.Id);
-                            await user.ModifyAsync(userProps =>
+                            tccIteration = 0;
+                            var tccCurrent = await TCCGetCrime();
+                            var crimePrice = tccCurrent.data.SRLY.First().quote.USD.price * 3.244;
+                            foreach (var guild in _client.Guilds)
                             {
-                                userProps.Nickname = $"CRIME PRICE: {crimePrice:C2}";
-                            });
+                                var user = guild.GetUser(_client.CurrentUser.Id);
+                                await user.ModifyAsync(userProps =>
+                                {
+                                    userProps.Nickname = $"CRIME PRICE: {crimePrice:C2}";
+                                });
+                            }
                         }
+
+                        var ltnSong = await GetLtnSong();
+                        await testLtnChannel.SendMessageAsync($"{ltnSong.currenttrack.artist} - {ltnSong.currenttrack.title}");
                     }
                     catch (Exception exc)
                     {
@@ -442,6 +456,25 @@ namespace DiceMastersDiscordBot.Services
             response.EnsureSuccessStatusCode();
 
             return JsonConvert.DeserializeObject<TCCValueResult>(await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<LtnSongInfo> GetLtnSong()
+        {
+            //var request = new HttpRequestMessage(HttpMethod.Get);
+
+            using var browserFetcher = new BrowserFetcher();
+            await browserFetcher.DownloadAsync();
+            await using var browser = await Puppeteer.LaunchAsync(
+                new LaunchOptions { Headless = true });
+            await using var page = await browser.NewPageAsync();
+            await page.GoToAsync("https://api.live365.com/station/a65452");
+            var pageContent = await page.GetContentAsync();
+            var startIndex = pageContent.IndexOf('{');
+            var endIndex = pageContent.LastIndexOf('}');
+
+            var jsonContent = pageContent.Substring(startIndex, endIndex - startIndex + 1);
+
+            return JsonConvert.DeserializeObject<LtnSongInfo>(jsonContent);
         }
 
         private Task Log(LogMessage msg)

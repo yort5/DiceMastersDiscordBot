@@ -19,6 +19,7 @@ namespace DiceMastersDiscordBot.Properties
         public string GetCommunitySheetId();
         public string GetCrimeSheetId();
         public ulong GetScoresChannelId();
+        public ulong GetLtnChannelId();
         public List<ulong> GetDiceMastersMediaChannelIds();
         public List<ulong> GetNonDiceMastersMediaChannelIds();
         public List<ulong> GetServersForSlashCommand(string slashCommandName);

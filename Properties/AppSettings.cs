@@ -125,6 +125,13 @@ namespace DiceMastersDiscordBot.Properties
             return channelId;
         }
 
+        public ulong GetLtnChannelId()
+        {
+            ulong channelId = 0;
+            ulong.TryParse(_config["LtnChannelId"], out channelId);
+            return channelId;
+        }
+
         public List<ulong> GetDiceMastersMediaChannelIds()
         {
             string channelList = _config["DiceMastersMediaChannelIds"];

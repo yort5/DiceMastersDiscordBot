@@ -56,6 +56,10 @@ namespace DiceMastersDiscordBot
                     {
                         c.BaseAddress = new Uri("https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest");
                     });
+                    services.AddHttpClient("LTN", c =>
+                    {
+                        c.BaseAddress = new Uri("https://api.live365.com/");
+                    });
                     services.AddHostedService<DiscordBot>();
                     services.AddHostedService<TCCDiscordBot>();
                 })
