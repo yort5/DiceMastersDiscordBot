@@ -85,6 +85,8 @@ namespace DiceMastersDiscordBot.Services
 
                 var lastUpdatedTicks = DateTime.MinValue.ToUniversalTime().Ticks;
                 var testLtnChannel = _client.GetChannel(_settings.GetLtnChannelId()) as IMessageChannel;
+                string lastPostedTrack = string.Empty;
+                int tccIteration = 0;
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
@@ -92,7 +94,6 @@ namespace DiceMastersDiscordBot.Services
 
                     // Doing the delay first, as the Guild data isn't populated yet if we do it right away.
                     await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-                    int tccIteration = 0;
                     try
                     {
                         tccIteration++;
@@ -112,7 +113,22 @@ namespace DiceMastersDiscordBot.Services
                         }
 
                         var ltnSong = await GetLtnSong();
-                        await testLtnChannel.SendMessageAsync($"{ltnSong.currenttrack.artist} - {ltnSong.currenttrack.title}");
+                        if( ltnSong != null && lastPostedTrack != ltnSong.currenttrack.title )
+                        {
+                            var trackEmbed = new EmbedBuilder
+                            {
+                                Title = $"{ltnSong.currenttrack.artist}",
+                                ThumbnailUrl = ltnSong.currenttrack.art
+                            };
+
+                            var trackSpan = TimeSpan.FromSeconds(ltnSong.currenttrack.duration);
+                            trackEmbed
+                            .AddField("Track", ltnSong.currenttrack.title)
+                                //.AddField("Die stats", communityCardInfo.StatLine)
+                                .WithFooter(footer => footer.Text = string.Format($"{trackSpan.Minutes}:{trackSpan.Seconds}"));
+                            await testLtnChannel.SendMessageAsync(embed: trackEmbed.Build());
+                            lastPostedTrack = ltnSong.currenttrack.title;
+                        }
                     }
                     catch (Exception exc)
                     {
@@ -462,10 +478,13 @@ namespace DiceMastersDiscordBot.Services
         {
             //var request = new HttpRequestMessage(HttpMethod.Get);
 
-            using var browserFetcher = new BrowserFetcher();
-            await browserFetcher.DownloadAsync();
+            using var browserFetcher = new BrowserFetcher(new BrowserFetcherOptions
+            {
+                Path = Path.GetTempPath()
+            });
+            await browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
             await using var browser = await Puppeteer.LaunchAsync(
-                new LaunchOptions { Headless = true });
+                new LaunchOptions { Headless = true, ExecutablePath = browserFetcher.RevisionInfo(BrowserFetcher.DefaultChromiumRevision.ToString()).ExecutablePath });
             await using var page = await browser.NewPageAsync();
             await page.GoToAsync("https://api.live365.com/station/a65452");
             var pageContent = await page.GetContentAsync();
