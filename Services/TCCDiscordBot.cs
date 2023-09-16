@@ -71,9 +71,9 @@ namespace DiceMastersDiscordBot.Services
 
                 //Initialize command handling.
                 _client.Ready += Client_Ready;
-                _client.MessageReceived += DiscordMessageReceived;
-                _client.SlashCommandExecuted += SlashCommandHandler;
-                _client.ModalSubmitted += ModalResponseHandler;
+                //_client.MessageReceived += DiscordMessageReceived;
+                //_client.SlashCommandExecuted += SlashCommandHandler;
+                //_client.ModalSubmitted += ModalResponseHandler;
 
                 // Connect the bot to Discord
                 string token = _settings.GetTCCDiscordToken();
@@ -97,7 +97,7 @@ namespace DiceMastersDiscordBot.Services
                     try
                     {
                         tccIteration++;
-                        if(tccIteration == 10)
+                        if (tccIteration == 10)
                         {
                             tccIteration = 0;
                             var tccCurrent = await TCCGetCrime();
@@ -112,22 +112,23 @@ namespace DiceMastersDiscordBot.Services
                             }
                         }
 
-                        var ltnSong = await GetLtnSong();
-                        if( ltnSong != null && lastPostedTrack != ltnSong.currenttrack.title )
-                        {
-                            var trackEmbed = new EmbedBuilder
-                            {
-                                Title = $"{ltnSong.currenttrack.artist}",
-                                ThumbnailUrl = ltnSong.currenttrack.art
-                            };
+                        //var ltnSong = await GetLtnSong();
+                        //if (ltnSong != null && lastPostedTrack != ltnSong.currenttrack.title)
+                        //{
+                        //    var trackEmbed = new EmbedBuilder
+                        //    {
+                        //        Title = $"{ltnSong.currenttrack.artist}",
+                        //        ThumbnailUrl = ltnSong.currenttrack.art
+                        //    };
 
-                            var trackSpan = TimeSpan.FromSeconds(ltnSong.currenttrack.duration);
-                            trackEmbed
-                            .AddField("Track", ltnSong.currenttrack.title)
-                                .WithFooter(footer => footer.Text = string.Format($"{trackSpan.Minutes}:{trackSpan.Seconds}"));
-                            await testLtnChannel.SendMessageAsync(embed: trackEmbed.Build());
-                            lastPostedTrack = ltnSong.currenttrack.title;
-                        }
+                        //    var trackSpan = TimeSpan.FromSeconds(ltnSong.currenttrack.duration);
+                        //    trackEmbed
+                        //    .AddField("Track", ltnSong.currenttrack.title)
+                        //        //.AddField("Die stats", communityCardInfo.StatLine)
+                        //        .WithFooter(footer => footer.Text = string.Format($"{trackSpan.Minutes}:{trackSpan.Seconds}"));
+                        //    await testLtnChannel.SendMessageAsync(embed: trackEmbed.Build());
+                        //    lastPostedTrack = ltnSong.currenttrack.title;
+                        //}
                     }
                     catch (Exception exc)
                     {
@@ -284,7 +285,7 @@ namespace DiceMastersDiscordBot.Services
 
                 if (IsRightNow(message))
                 {
-                    if(_random.Next(2) == 0)
+                    if (_random.Next(2) == 0)
                     {
                         await message.Channel.SendMessageAsync("STAY UP STAY UP");
                     }
@@ -475,13 +476,17 @@ namespace DiceMastersDiscordBot.Services
 
         public async Task<LtnSongInfo> GetLtnSong()
         {
-            var options = new ConnectOptions()
+            //var request = new HttpRequestMessage(HttpMethod.Get);
+
+            using var browserFetcher = new BrowserFetcher(new BrowserFetcherOptions
             {
-                BrowserWSEndpoint = $"wss://chrome.browserless.io?token={_settings.GetBrowserlessApiKey()}"
-            };
-            var browser = await Puppeteer.ConnectAsync(options);
+                Path = Path.GetTempPath()
+            });
+            await browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
+            await using var browser = await Puppeteer.LaunchAsync(
+                new LaunchOptions { Headless = true, ExecutablePath = browserFetcher.RevisionInfo(BrowserFetcher.DefaultChromiumRevision.ToString()).ExecutablePath });
             await using var page = await browser.NewPageAsync();
-            await page.GoToAsync(_settings.GetLtnUrl());
+            await page.GoToAsync("https://api.live365.com/station/a65452");
             var pageContent = await page.GetContentAsync();
             var startIndex = pageContent.IndexOf('{');
             var endIndex = pageContent.LastIndexOf('}');
