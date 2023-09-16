@@ -12,7 +12,7 @@ namespace DiceMastersDiscordBot.Properties
         public string GetGoogleToken();
         public string GetChallongeToken();
         public string GetTCCValueTrackerApiKey();
-
+        public string GetBrowserlessApiKey();
 
 
         public string GetMasterSheetId();
@@ -20,6 +20,7 @@ namespace DiceMastersDiscordBot.Properties
         public string GetCrimeSheetId();
         public ulong GetScoresChannelId();
         public ulong GetLtnChannelId();
+        public string GetLtnUrl();
         public List<ulong> GetDiceMastersMediaChannelIds();
         public List<ulong> GetNonDiceMastersMediaChannelIds();
         public List<ulong> GetServersForSlashCommand(string slashCommandName);

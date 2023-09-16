@@ -113,6 +113,11 @@ namespace DiceMastersDiscordBot.Properties
             return _config["TCCValueTrackerApi"];
         }
 
+        public string GetBrowserlessApiKey()
+        {
+            return _config["BrowserlessApiKey"];
+        }
+
         public string GetCrimeSheetId()
         {
             return _CrimeSheetId;
@@ -130,6 +135,11 @@ namespace DiceMastersDiscordBot.Properties
             ulong channelId = 0;
             ulong.TryParse(_config["LtnChannelId"], out channelId);
             return channelId;
+        }
+
+        public string GetLtnUrl()
+        {
+            return _config["LtnUrl"];
         }
 
         public List<ulong> GetDiceMastersMediaChannelIds()

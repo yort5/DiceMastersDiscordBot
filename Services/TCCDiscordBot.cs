@@ -124,7 +124,6 @@ namespace DiceMastersDiscordBot.Services
                             var trackSpan = TimeSpan.FromSeconds(ltnSong.currenttrack.duration);
                             trackEmbed
                             .AddField("Track", ltnSong.currenttrack.title)
-                                //.AddField("Die stats", communityCardInfo.StatLine)
                                 .WithFooter(footer => footer.Text = string.Format($"{trackSpan.Minutes}:{trackSpan.Seconds}"));
                             await testLtnChannel.SendMessageAsync(embed: trackEmbed.Build());
                             lastPostedTrack = ltnSong.currenttrack.title;
@@ -476,17 +475,13 @@ namespace DiceMastersDiscordBot.Services
 
         public async Task<LtnSongInfo> GetLtnSong()
         {
-            //var request = new HttpRequestMessage(HttpMethod.Get);
-
-            using var browserFetcher = new BrowserFetcher(new BrowserFetcherOptions
+            var options = new ConnectOptions()
             {
-                Path = Path.GetTempPath()
-            });
-            await browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
-            await using var browser = await Puppeteer.LaunchAsync(
-                new LaunchOptions { Headless = true, ExecutablePath = browserFetcher.RevisionInfo(BrowserFetcher.DefaultChromiumRevision.ToString()).ExecutablePath });
+                BrowserWSEndpoint = $"wss://chrome.browserless.io?token={_settings.GetBrowserlessApiKey()}"
+            };
+            var browser = await Puppeteer.ConnectAsync(options);
             await using var page = await browser.NewPageAsync();
-            await page.GoToAsync("https://api.live365.com/station/a65452");
+            await page.GoToAsync(_settings.GetLtnUrl());
             var pageContent = await page.GetContentAsync();
             var startIndex = pageContent.IndexOf('{');
             var endIndex = pageContent.LastIndexOf('}');
