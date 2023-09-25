@@ -71,9 +71,9 @@ namespace DiceMastersDiscordBot.Services
 
                 //Initialize command handling.
                 _client.Ready += Client_Ready;
-                //_client.MessageReceived += DiscordMessageReceived;
-                //_client.SlashCommandExecuted += SlashCommandHandler;
-                //_client.ModalSubmitted += ModalResponseHandler;
+                _client.MessageReceived += DiscordMessageReceived;
+                _client.SlashCommandExecuted += SlashCommandHandler;
+                _client.ModalSubmitted += ModalResponseHandler;
 
                 // Connect the bot to Discord
                 string token = _settings.GetTCCDiscordToken();
